@@ -20,14 +20,17 @@ export async function authenticate(
     try {
         await signIn("credentials", formData);
     } catch (error) {
+        console.error("Authenticate action error:", error);
         if (error instanceof AuthError) {
+            console.error("AuthError Type:", error.type);
             switch (error.type) {
                 case "CredentialsSignin":
                     return "Invalid credentials.";
                 default:
-                    return "Something went wrong.";
+                    return `Auth Error: ${error.type}`;
             }
         }
+        return `Unexpected Error: ${(error as any).message || "Unknown error"}`;
         throw error;
     }
 }

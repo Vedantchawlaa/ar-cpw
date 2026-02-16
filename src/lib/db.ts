@@ -9,6 +9,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
     console.error("❌ CRITICAL ERROR: DATABASE_URL is missing from environment variables!");
+    console.error("Current env keys:", Object.keys(process.env).filter(k => k.includes("DATABASE") || k.includes("URL")));
 }
 
 export const db =

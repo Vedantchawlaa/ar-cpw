@@ -28,12 +28,23 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 
                 if (parsedCredentials.success) {
                     const { email, password } = parsedCredentials.data;
+                    console.log("Authorize: Looking for user:", email);
                     const user = await getUser(email);
-                    if (!user) return null;
+                    if (!user) {
+                        console.log("Authorize: User not found");
+                        return null;
+                    }
 
+                    console.log("Authorize: User found, comparing passwords...");
                     const passwordsMatch = await bcrypt.compare(password, user.password);
 
-                    if (passwordsMatch) return user;
+                    if (passwordsMatch) {
+                        console.log("Authorize: Login successful");
+                        return user;
+                    }
+                    console.log("Authorize: Password mismatch");
+                } else {
+                    console.log("Authorize: Invalid input fields", parsedCredentials.error.format());
                 }
 
                 console.log("Invalid credentials");
