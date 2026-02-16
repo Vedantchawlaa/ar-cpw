@@ -31,7 +31,6 @@ export async function authenticate(
             }
         }
         return `Unexpected Error: ${(error as any).message || "Unknown error"}`;
-        throw error;
     }
 }
 
