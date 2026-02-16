@@ -39,7 +39,7 @@ export default async function NewQuotationPage({
 
             console.log("Available products:", allProducts.length);
 
-            console.log("Measurement data structure:", JSON.stringify(data, null, 2));
+            console.log("Measurement data processed for items");
 
             // Process all floors and rooms
             for (const floor of data.floors || []) {

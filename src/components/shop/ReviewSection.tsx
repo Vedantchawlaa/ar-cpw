@@ -7,6 +7,7 @@ import { addShopReview } from "@/lib/actions/shop-product-actions";
 // @ts-ignore
 import { Star, User } from "lucide-react";
 import { useActionState } from "react";
+import { formatDate } from "@/lib/utils";
 
 interface Review {
     id: string;
@@ -174,7 +175,7 @@ export function ReviewSection({ productId, reviews }: ReviewSectionProps) {
                                             </div>
                                         </div>
                                         <span className="text-sm text-slate-500">
-                                            {new Date(review.createdAt).toLocaleDateString()}
+                                            {formatDate(review.createdAt)}
                                         </span>
                                     </div>
                                     {review.comment && (

@@ -31,6 +31,7 @@ interface QuotationBuilderProps {
 interface LineItem {
     id: string;
     description: string;
+    details?: string;
     quantity: number;
     rate: number;
     amount: number;
@@ -47,8 +48,8 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
 
     const [items, setItems] = useState<LineItem[]>(
         initialItems ||
-        initialData?.items.map((i: any) => ({ ...i, id: i.id })) ||
-        [{ id: '1', description: '', quantity: 1, rate: 0, amount: 0 }]
+        initialData?.items.map((i: any) => ({ ...i, id: i.id, details: i.details || "" })) ||
+        [{ id: '1', description: '', details: '', quantity: 1, rate: 0, amount: 0 }]
     );
     const [products, setProducts] = useState<Product[]>([]);
 
@@ -96,7 +97,7 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     const [discount, setDiscount] = useState(0);
     const [receivedAmount, setReceivedAmount] = useState(0);
     const [description, setDescription] = useState(initialData?.description || "");
-    const [services, setServices] = useState<{ id: string, label: string, enabled: boolean, rate: number }[]>(
+    const [services, setServices] = useState<{ id: string, label: string, enabled: boolean, rate: string | number }[]>(
         initialData?.services || [
             { id: '1', label: 'Installation', enabled: false, rate: 0 },
             { id: '2', label: 'Transport', enabled: false, rate: 0 },
@@ -145,7 +146,7 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     const addItem = () => {
         setItems(prev => [
             ...prev,
-            { id: Math.random().toString(), description: '', quantity: 1, rate: 0, amount: 0 }
+            { id: Math.random().toString(), description: '', details: '', quantity: 1, rate: 0, amount: 0 }
         ]);
     };
 
@@ -333,12 +334,12 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                                     <div className="flex items-center space-x-1 min-w-[80px]">
                                                         <span className="text-zinc-400 text-xs">₹</span>
                                                         <input
-                                                            type="number"
+                                                            type="text"
                                                             placeholder="Price"
-                                                            value={service.rate || ''}
+                                                            value={service.rate}
                                                             onChange={(e) => {
                                                                 const newServices = [...services];
-                                                                newServices[idx].rate = parseFloat(e.target.value) || 0;
+                                                                newServices[idx].rate = e.target.value;
                                                                 setServices(newServices);
                                                             }}
                                                             className="bg-transparent text-sm border-none focus:ring-0 p-0 text-zinc-700 w-full text-right"
@@ -373,42 +374,52 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                             {items.map((item, index) => (
                                 <div key={item.id} className="grid grid-cols-12 gap-2 items-end border-b border-zinc-100 pb-4 last:border-0 last:pb-0">
                                     <div className="col-span-12 md:col-span-5">
-                                        <label className="text-xs font-medium text-zinc-500 mb-1 block uppercase tracking-wider">Description</label>
                                         <div className="relative group">
-                                            <SearchableSelect
-                                                options={products.map(p => ({ id: p.id, name: p.name, rate: p.rate }))}
-                                                value={item.description}
-                                                editable={true}
-                                                onChange={(val) => {
-                                                    handleItemChange(item.id, 'description', val);
-                                                    // If a product was selected (not just typed), it will have an ID in our lookup
-                                                    const product = products.find(p => p.id === val || p.name === val);
-                                                    if (product && product.name === val) {
-                                                        // This helps trigger any linked logic like rate auto-fill
-                                                        // handleItemChange already handled the description
-                                                    }
-                                                }}
-                                                placeholder="Item name (e.g. Roller Blind)"
-                                                renderOption={(opt: Option) => (
-                                                    <div className="flex justify-between items-center w-full">
-                                                        <span className="font-medium text-sm">{opt.name}</span>
-                                                        <span className="text-xs text-zinc-400">₹{opt.rate}</span>
-                                                    </div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Description</label>
+                                                {item.description && (
+                                                    products.some(p => p.name.toLowerCase() === item.description.toLowerCase()) ? (
+                                                        <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold uppercase tracking-tighter">Catalogue</span>
+                                                    ) : (
+                                                        <span className="text-[9px] px-1.5 py-0.5 bg-zinc-100 text-zinc-500 rounded-full font-bold uppercase tracking-tighter">Manual Entry</span>
+                                                    )
                                                 )}
-                                                className="pr-10"
-                                            />
-                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10 pointer-events-auto">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => saveToCatalog(item.description, item.rate, item.id)}
-                                                    className={cn(
-                                                        "p-1 hover:bg-zinc-100 rounded-md transition-colors",
-                                                        savedProducts[item.id] ? "text-green-500" : "text-zinc-400 hover:text-blue-500"
+                                            </div>
+                                            <div className="relative">
+                                                <SearchableSelect
+                                                    options={products.map(p => ({ id: p.id, name: p.name, rate: p.rate }))}
+                                                    value={item.description}
+                                                    editable={true}
+                                                    onChange={(val) => {
+                                                        handleItemChange(item.id, 'description', val);
+                                                    }}
+                                                    placeholder="Item name (e.g. Roller Blind)"
+                                                    renderOption={(opt: Option) => (
+                                                        <div className="flex justify-between items-center w-full">
+                                                            <div className="flex items-center">
+                                                                <Database className="h-3 w-3 mr-2 text-zinc-400" />
+                                                                <span className="font-medium text-sm">{opt.name}</span>
+                                                            </div>
+                                                            <span className="text-xs text-zinc-400">₹{opt.rate}</span>
+                                                        </div>
                                                     )}
-                                                    title="Save to Catalog"
-                                                >
-                                                    {savedProducts[item.id] ? <Check className="h-4 w-4" /> : <Database className="h-4 w-4" />}
-                                                </button>
+                                                    className="pr-10"
+                                                />
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10 pointer-events-auto">
+                                                    {!products.some(p => p.name.toLowerCase() === item.description.toLowerCase()) && item.description && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => saveToCatalog(item.description, item.rate, item.id)}
+                                                            className={cn(
+                                                                "p-1 hover:bg-zinc-100 rounded-md transition-colors",
+                                                                savedProducts[item.id] ? "text-green-500" : "text-zinc-400 hover:text-blue-500"
+                                                            )}
+                                                            title="Save to Catalog"
+                                                        >
+                                                            {savedProducts[item.id] ? <Check className="h-4 w-4" /> : <Database className="h-4 w-4" />}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -436,9 +447,16 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                             ₹{item.amount.toFixed(0)}
                                         </div>
                                     </div>
-                                    <div className="col-span-1 flex justify-center">
-                                        {/* @ts-ignore */}
-                                        <Button variant="ghost" size="sm" className="text-red-500" onClick={() => removeItem(item.id)}>
+                                    <div className="col-span-12 md:col-span-11 mt-1">
+                                        <Input
+                                            placeholder="Details / Specs (Size, Fabric, Options...)"
+                                            value={item.details || ''}
+                                            onChange={(e) => handleItemChange(item.id, 'details', e.target.value)}
+                                            className="h-8 text-[13px] bg-zinc-50/50 border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="col-span-12 md:col-span-1 flex justify-end">
+                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => removeItem(item.id)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>

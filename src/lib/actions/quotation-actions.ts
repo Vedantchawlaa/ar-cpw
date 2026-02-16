@@ -97,7 +97,7 @@ export async function getActiveOrders() {
 export async function createQuotation(data: {
     number?: string;
     leadId: string;
-    items: { description: string; quantity: number; rate: number; amount: number }[];
+    items: { description: string; details?: string; quantity: number; rate: number; amount: number }[];
     subtotal: number;
     tax?: number;
     discount?: number;
@@ -108,7 +108,7 @@ export async function createQuotation(data: {
 }) {
     try {
         const session = await auth();
-        console.log("Session in createQuotation:", JSON.stringify(session, null, 2));
+        if (session) console.log("User creating quotation:", session.user?.email);
         if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
         let number = data.number;
@@ -140,6 +140,7 @@ export async function createQuotation(data: {
                     items: {
                         create: data.items.map(item => ({
                             description: item.description,
+                            details: item.details,
                             quantity: item.quantity,
                             rate: item.rate,
                             amount: item.amount,
@@ -160,14 +161,14 @@ export async function createQuotation(data: {
         return { success: true, data: quotation as any };
     } catch (error) {
         console.error("Failed to create quotation:", error);
-        return { success: false, error: "Failed to create quotation" };
+        return { success: false, error: error instanceof Error ? error.message : "Failed to create quotation" };
     }
 }
 
 export async function updateQuotation(id: string, data: {
     number?: string;
     leadId: string;
-    items: { description: string; quantity: number; rate: number; amount: number }[];
+    items: { description: string; details?: string; quantity: number; rate: number; amount: number }[];
     subtotal: number;
     tax?: number;
     discount?: number;
@@ -217,6 +218,7 @@ export async function updateQuotation(id: string, data: {
                 items: {
                     create: data.items.map(item => ({
                         description: item.description,
+                        details: item.details,
                         quantity: item.quantity,
                         rate: item.rate,
                         amount: item.amount,

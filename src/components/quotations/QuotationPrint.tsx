@@ -3,6 +3,7 @@
 import { QuotationWithRelations } from "@/lib/types/quotation";
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
+import { formatDate } from "@/lib/utils";
 // @ts-ignore
 import { Printer, Share2, Pencil, Check, X, Edit, Download, MessageSquare, Bell } from "lucide-react";
 import Link from "next/link";
@@ -253,11 +254,7 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                     <div className={`${layoutMode === 'compact' ? 'mt-4' : 'mt-20'} uppercase tracking-wide space-y-2`}>
                         <div className={`text-zinc-400 font-bold tracking-tighter ${layoutMode === 'compact' ? 'text-sm' : 'text-xl'}`}>To</div>
                         <div className={`font-black text-zinc-900 tracking-tight ${layoutMode === 'compact' ? 'text-xl' : 'text-3xl'}`}>{quotation.lead.name}</div>
-                        <div className="text-zinc-600 font-bold italic font-mono text-xs">Date: {new Date().toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        })}</div>
+                        <div className="text-zinc-600 font-bold italic font-mono text-xs">Date: {formatDate(new Date())}</div>
                     </div>
 
                     {/* Right Side: Logo & Estimate info */}
@@ -329,7 +326,13 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                                                 </div>
                                                 {s.label}
                                             </div>
-                                            {s.rate > 0 && <span>₹{s.rate.toLocaleString()}</span>}
+                                            {s.rate !== undefined && s.rate !== null && s.rate !== "" && (
+                                                <span>
+                                                    {typeof s.rate === 'number' || !isNaN(Number(s.rate))
+                                                        ? `₹${Number(s.rate).toLocaleString()}`
+                                                        : s.rate}
+                                                </span>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

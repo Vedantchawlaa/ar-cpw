@@ -9,6 +9,7 @@ import { Plus, Printer, Trash2, MessageSquare, Bell } from "lucide-react";
 import Link from "next/link";
 import { deleteQuotation } from "@/lib/actions/quotation-actions";
 import QuotationPrint from "./QuotationPrint";
+import { formatDate } from "@/lib/utils";
 
 interface QuotationListProps {
     initialQuotations: QuotationWithRelations[];
@@ -137,7 +138,7 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
                                 initialQuotations.map((quotation) => (
                                     <tr key={quotation.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                                         <td className="px-4 py-3 font-medium">{quotation.number}</td>
-                                        <td className="px-4 py-3 text-zinc-500">{new Date(quotation.date).toLocaleDateString()}</td>
+                                        <td className="px-4 py-3 text-zinc-500">{formatDate(quotation.date)}</td>
                                         <td className="px-4 py-3">
                                             <div className="font-medium text-zinc-900 dark:text-zinc-100">{quotation.lead.name}</div>
                                             <div className="text-xs text-zinc-500">{quotation.lead.city}</div>

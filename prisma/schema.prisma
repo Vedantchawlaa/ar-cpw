@@ -55,6 +55,7 @@ model QuotationItem {
   quantity    Float
   rate        Float
   amount      Float
+  details     String?   @db.Text
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
 }
 

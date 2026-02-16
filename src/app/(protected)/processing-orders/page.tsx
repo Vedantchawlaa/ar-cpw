@@ -8,6 +8,7 @@ import { getQuotations, getActiveOrders, markAsSale, updateQuotation, updateOrde
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
+import { formatDate } from "@/lib/utils";
 
 export default function ProcessingOrdersPage() {
     const router = useRouter();
@@ -150,7 +151,7 @@ export default function ProcessingOrdersPage() {
                                         <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors">
                                             <td className="px-4 py-3 font-medium">{item.number}</td>
                                             <td className="px-4 py-3">{item.lead.name}</td>
-                                            <td className="px-4 py-3 text-zinc-500">{new Date(item.date).toLocaleDateString()}</td>
+                                            <td className="px-4 py-3 text-zinc-500">{formatDate(item.date)}</td>
                                             <td className="px-4 py-3">
                                                 <Input
                                                     type="date"
