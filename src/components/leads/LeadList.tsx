@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Trash2, Pencil } from "lucide-react";
 import { deleteLead } from "@/lib/actions/lead-actions";
 import { Lead } from "@prisma/client";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 interface LeadListProps {
     leads: Lead[];
@@ -78,12 +78,12 @@ export function LeadList({ leads, onEdit }: LeadListProps) {
                                         </Badge>
                                     </td>
                                     <td className="px-4 py-3 text-slate-600">
-                                        {new Date((lead as any).lastContacted).toLocaleDateString()}
+                                        {formatDate(lead.lastContacted)}
                                     </td>
                                     <td className="px-4 py-3">
                                         {(lead as any).nextContactDate ? (
                                             <span className={`font-medium ${new Date((lead as any).nextContactDate) < new Date() ? "text-red-600" : "text-blue-600"}`}>
-                                                {new Date((lead as any).nextContactDate).toLocaleDateString()}
+                                                {formatDate((lead as any).nextContactDate)}
                                             </span>
                                         ) : (
                                             <span className="text-slate-400">Not set</span>

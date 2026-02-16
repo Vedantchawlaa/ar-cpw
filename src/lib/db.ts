@@ -1,15 +1,27 @@
 import { PrismaClient } from "@prisma/client";
+import "dotenv/config";
 
-const prismaClientSingleton = () => {
-    return new PrismaClient();
+const globalForPrisma = globalThis as unknown as {
+    prisma: PrismaClient | undefined;
 };
 
-declare global {
-    var prisma: undefined | ReturnType<typeof prismaClientSingleton>;
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+    console.error("❌ CRITICAL ERROR: DATABASE_URL is missing from environment variables!");
 }
 
-const db = globalThis.prisma ?? prismaClientSingleton();
+export const db =
+    globalForPrisma.prisma ??
+    new PrismaClient({
+        log: ["query", "error", "warn"],
+        datasources: {
+            db: {
+                url: DATABASE_URL,
+            },
+        },
+    });
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 
 export default db;
-
-globalThis.prisma = db;
