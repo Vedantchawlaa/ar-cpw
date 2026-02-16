@@ -251,7 +251,7 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                 <div className={`relative z-10 flex justify-between items-start ${layoutMode === 'compact' ? 'mb-4' : 'mb-6'} break-inside-avoid transition-all`}>
                     {/* Left Side: Bill To */}
                     <div className={`${layoutMode === 'compact' ? 'mt-4' : 'mt-20'} uppercase tracking-wide space-y-2`}>
-                        <div className={`text-zinc-400 font-bold tracking-tighter ${layoutMode === 'compact' ? 'text-sm' : 'text-xl'}`}>Bill To</div>
+                        <div className={`text-zinc-400 font-bold tracking-tighter ${layoutMode === 'compact' ? 'text-sm' : 'text-xl'}`}>To</div>
                         <div className={`font-black text-zinc-900 tracking-tight ${layoutMode === 'compact' ? 'text-xl' : 'text-3xl'}`}>{quotation.lead.name}</div>
                         <div className="text-zinc-600 font-bold italic font-mono text-xs">Date: {new Date().toLocaleDateString(undefined, {
                             year: 'numeric',
@@ -307,6 +307,36 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* QUOTATION DESCRIPTION & SERVICES */}
+                {(quotation.description || (quotation.services && Array.isArray(quotation.services) && quotation.services.some((s: any) => s.enabled))) && (
+                    <div className="relative z-10 mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 break-inside-avoid">
+                        {quotation.description && (
+                            <div className="p-4 bg-zinc-50/50 border-l-4 border-zinc-200 rounded-r-lg">
+                                <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Notes & Description</div>
+                                <div className="text-zinc-700 whitespace-pre-wrap leading-relaxed italic">{quotation.description}</div>
+                            </div>
+                        )}
+                        {quotation.services && Array.isArray(quotation.services) && quotation.services.some((s: any) => s.enabled) && (
+                            <div className="p-4 bg-blue-50/30 border-l-4 border-blue-200 rounded-r-lg">
+                                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1.5">Additional Services</div>
+                                <div className="grid grid-cols-1 gap-1.5">
+                                    {quotation.services.filter((s: any) => s.enabled && s.label).map((s: any, idx: number) => (
+                                        <div key={idx} className="flex items-center justify-between text-zinc-700 text-xs font-bold uppercase tracking-tight">
+                                            <div className="flex items-center">
+                                                <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                                                    <Check className="w-2.5 h-2.5 text-green-600" />
+                                                </div>
+                                                {s.label}
+                                            </div>
+                                            {s.rate > 0 && <span>₹{s.rate.toLocaleString()}</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* SUMMARY ROW with Left-Aligned QR */}
                 <div className="relative z-10 flex justify-between items-end gap-8 mb-4 break-inside-avoid">

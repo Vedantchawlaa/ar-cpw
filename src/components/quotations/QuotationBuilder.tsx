@@ -95,6 +95,14 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     const [taxRate, setTaxRate] = useState(0);
     const [discount, setDiscount] = useState(0);
     const [receivedAmount, setReceivedAmount] = useState(0);
+    const [description, setDescription] = useState(initialData?.description || "");
+    const [services, setServices] = useState<{ id: string, label: string, enabled: boolean, rate: number }[]>(
+        initialData?.services || [
+            { id: '1', label: 'Installation', enabled: false, rate: 0 },
+            { id: '2', label: 'Transport', enabled: false, rate: 0 },
+            { id: '3', label: 'Site Measurement', enabled: false, rate: 0 },
+        ]
+    );
     const [savedProducts, setSavedProducts] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
@@ -186,7 +194,9 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                 discount,
                 total,
                 receivedAmount,
-                status: initialData?.status || 'DRAFT'
+                status: initialData?.status || 'DRAFT',
+                description,
+                services
             };
 
             let result;
@@ -279,6 +289,74 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                         )}
                                     </div>
                                 )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                <div className="flex flex-col space-y-2">
+                                    <label className="text-sm font-medium text-zinc-700">Description / Notes</label>
+                                    <textarea
+                                        className="flex min-h-[100px] w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Add any special instructions or notes here..."
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="flex flex-col space-y-2">
+                                    <label className="text-sm font-medium text-zinc-700">Additional Services (Optional)</label>
+                                    <div className="border border-zinc-200 rounded-md p-3 space-y-2 bg-zinc-50/30">
+                                        {services.map((service, idx) => (
+                                            <div key={service.id} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`service-${service.id}`}
+                                                    checked={service.enabled}
+                                                    onChange={(e) => {
+                                                        const newServices = [...services];
+                                                        newServices[idx].enabled = e.target.checked;
+                                                        setServices(newServices);
+                                                    }}
+                                                    className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <div className="flex-1 flex items-center space-x-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Service Name"
+                                                        value={service.label}
+                                                        onChange={(e) => {
+                                                            const newServices = [...services];
+                                                            newServices[idx].label = e.target.value;
+                                                            setServices(newServices);
+                                                        }}
+                                                        className="bg-transparent text-sm border-none focus:ring-0 p-0 text-zinc-700 w-full"
+                                                    />
+                                                    <div className="flex items-center space-x-1 min-w-[80px]">
+                                                        <span className="text-zinc-400 text-xs">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="Price"
+                                                            value={service.rate || ''}
+                                                            onChange={(e) => {
+                                                                const newServices = [...services];
+                                                                newServices[idx].rate = parseFloat(e.target.value) || 0;
+                                                                setServices(newServices);
+                                                            }}
+                                                            className="bg-transparent text-sm border-none focus:ring-0 p-0 text-zinc-700 w-full text-right"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => setServices([...services, { id: Math.random().toString(), label: '', enabled: true, rate: 0 }])}
+                                            className="text-xs text-blue-600 hover:underline flex items-center pt-1"
+                                        >
+                                            <Plus className="h-3 w-3 mr-1" /> Add Service
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-zinc-500 italic">* These appear on the estimate with a tick mark but don't add to the total.</p>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

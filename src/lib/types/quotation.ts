@@ -9,6 +9,8 @@ export interface Quotation {
     total: number;
     receivedAmount: number;
     status: string; // 'DRAFT', 'SENT', 'ACCEPTED', 'REJECTED'
+    description?: string;
+    services?: any; // Array of { label: string, enabled: boolean }
     createdAt: Date;
     updatedAt: Date;
 }
