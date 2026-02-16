@@ -49,58 +49,75 @@ export default async function DashboardPage(props: {
     const visibilityFilter = role === 'admin' ? {} : { userId };
 
     // Fetch metrics with combined filters
-    const [
-        totalRevenueResult,
-        leadsCount,
-        quotationsCount,
-        convertedLeadsCount,
-        recentQuotations
-    ] = await Promise.all([
-        (prisma as any).quotation.aggregate({
-            where: {
-                status: 'SALE',
-                ...visibilityFilter,
-                ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
-            },
-            _sum: { receivedAmount: true }
-        }),
-        (prisma as any).lead.count({
-            where: {
-                ...visibilityFilter,
-                ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
-            }
-        }),
-        (prisma as any).quotation.count({
-            where: {
-                ...visibilityFilter,
-                ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
-            }
-        }),
-        (prisma as any).lead.count({
-            where: {
-                ...visibilityFilter,
-                ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {}),
-                quotations: {
-                    some: {
-                        status: 'SALE',
-                        ...visibilityFilter,
-                        ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
+    let totalRevenue = 0;
+    let leadsCount = 0;
+    let quotationsCount = 0;
+    let convertedLeadsCount = 0;
+    let recentQuotations: any[] = [];
+    let dbError = false;
+
+    try {
+        const [
+            totalRevenueResult,
+            lCount,
+            qCount,
+            clCount,
+            rQuotations
+        ] = await Promise.all([
+            (prisma as any).quotation.aggregate({
+                where: {
+                    status: 'SALE',
+                    ...visibilityFilter,
+                    ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
+                },
+                _sum: { receivedAmount: true }
+            }),
+            (prisma as any).lead.count({
+                where: {
+                    ...visibilityFilter,
+                    ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
+                }
+            }),
+            (prisma as any).quotation.count({
+                where: {
+                    ...visibilityFilter,
+                    ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
+                }
+            }),
+            (prisma as any).lead.count({
+                where: {
+                    ...visibilityFilter,
+                    ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {}),
+                    quotations: {
+                        some: {
+                            status: 'SALE',
+                            ...visibilityFilter,
+                            ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
+                        }
                     }
                 }
-            }
-        }),
-        (prisma as any).quotation.findMany({
-            take: 5,
-            where: {
-                ...visibilityFilter,
-                ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
-            },
-            orderBy: { createdAt: 'desc' },
-            include: { lead: { select: { name: true } } }
-        })
-    ]);
+            }),
+            (prisma as any).quotation.findMany({
+                take: 5,
+                where: {
+                    ...visibilityFilter,
+                    ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
+                },
+                orderBy: { createdAt: 'desc' },
+                include: { lead: { select: { name: true } } }
+            })
+        ]);
 
-    const totalRevenue = totalRevenueResult._sum.receivedAmount || 0;
+        totalRevenue = totalRevenueResult._sum.receivedAmount || 0;
+        leadsCount = lCount;
+        quotationsCount = qCount;
+        convertedLeadsCount = clCount;
+        recentQuotations = rQuotations;
+    } catch (error) {
+        console.error("Dashboard data fetch failed:", error);
+        dbError = true;
+    }
+
     const conversionRate = leadsCount > 0 ? Math.min((convertedLeadsCount / leadsCount) * 100, 100) : 0;
 
     return (
@@ -112,6 +129,30 @@ export default async function DashboardPage(props: {
                 </div>
                 <DashboardFilter />
             </div>
+
+            {dbError && (
+                <Card className="border-rose-200 bg-rose-50/50">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-rose-800 flex items-center gap-2">
+                            <Activity className="h-5 w-5" />
+                            Database Connection Issue
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-rose-700">
+                            The system is currently unable to fetch real-time metrics. This is usually caused by an outdated database schema or a connection limit.
+                        </p>
+                        <div className="mt-4 p-3 bg-rose-100/50 rounded-md border border-rose-200">
+                            <h4 className="text-xs font-bold uppercase text-rose-800 mb-2">How to Fix:</h4>
+                            <ol className="text-xs text-rose-800 space-y-1 list-decimal ml-4">
+                                <li>Ensure your <strong>Vercel Environment Variables</strong> (DATABASE_URL, DIRECT_URL) are correctly set.</li>
+                                <li>Run <code className="bg-rose-200/50 px-1 rounded">npx prisma db push</code> using your Direct URL to sync the schema.</li>
+                                <li>Check your Supabase connection pool limits.</li>
+                            </ol>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
                 <Card className="hover:shadow-md transition-shadow relative overflow-hidden group">
