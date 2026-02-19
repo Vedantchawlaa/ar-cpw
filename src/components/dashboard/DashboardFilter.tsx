@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 // @ts-ignore
 import { Calendar, ChevronDown, ListFilter, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 const PRESETS = [
     { label: "Last 24 hrs", value: "24h" },
@@ -24,8 +25,12 @@ export function DashboardFilter() {
 
     const currentRange = searchParams.get("range") || "all";
     const [isOpen, setIsOpen] = useState(false);
-    const [startDate, setStartDate] = useState(searchParams.get("from") || "");
-    const [endDate, setEndDate] = useState(searchParams.get("to") || "");
+    const [startDate, setStartDate] = useState<Date | undefined>(
+        searchParams.get("from") ? new Date(searchParams.get("from")!) : undefined
+    );
+    const [endDate, setEndDate] = useState<Date | undefined>(
+        searchParams.get("to") ? new Date(searchParams.get("to")!) : undefined
+    );
 
     const updateFilter = (range: string, from?: string, to?: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -44,7 +49,9 @@ export function DashboardFilter() {
     };
 
     const handleCustomSubmit = () => {
-        updateFilter("custom", startDate, endDate);
+        const fromStr = startDate ? startDate.toISOString().split('T')[0] : "";
+        const toStr = endDate ? endDate.toISOString().split('T')[0] : "";
+        updateFilter("custom", fromStr, toStr);
         setIsOpen(false);
     };
 
@@ -112,17 +119,17 @@ export function DashboardFilter() {
                             <div className="space-y-2">
                                 <label className="text-[10px] uppercase font-bold text-slate-500 px-1 tracking-wider text-left block">Date Range</label>
                                 <div className="grid grid-cols-1 gap-2 p-1 text-left">
-                                    <Input
-                                        type="date"
-                                        className="h-8 text-xs"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
+                                    <DatePicker
+                                        date={startDate}
+                                        setDate={setStartDate}
+                                        placeholder="From date"
+                                        className="h-8"
                                     />
-                                    <Input
-                                        type="date"
-                                        className="h-8 text-xs"
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
+                                    <DatePicker
+                                        date={endDate}
+                                        setDate={setEndDate}
+                                        placeholder="To date"
+                                        className="h-8"
                                     />
                                 </div>
                             </div>

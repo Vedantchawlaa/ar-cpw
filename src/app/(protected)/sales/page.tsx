@@ -9,13 +9,14 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export default function SalesPage() {
     const router = useRouter();
     const [sales, setSales] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+    const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
     const fetchData = async () => {
         setLoading(true);
@@ -69,8 +70,8 @@ export default function SalesPage() {
     const completedSalesCount = finalSales.length;
 
     const clearFilters = () => {
-        setStartDate("");
-        setEndDate("");
+        setStartDate(undefined);
+        setEndDate(undefined);
     };
 
     return (
@@ -82,18 +83,18 @@ export default function SalesPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-2 bg-white p-1 rounded-md border border-slate-200">
-                        <Input
-                            type="date"
-                            className="w-40 border-0 focus-visible:ring-0 h-8"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
+                        <DatePicker
+                            date={startDate}
+                            setDate={setStartDate}
+                            placeholder="From date"
+                            className="w-40"
                         />
                         <span className="text-slate-400">to</span>
-                        <Input
-                            type="date"
-                            className="w-40 border-0 focus-visible:ring-0 h-8"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
+                        <DatePicker
+                            date={endDate}
+                            setDate={setEndDate}
+                            placeholder="To date"
+                            className="w-40"
                         />
                         {(startDate || endDate) && (
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={clearFilters}>

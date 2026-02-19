@@ -28,7 +28,7 @@ export default async function LandingPage() {
 
       <main className="flex-1">
         {/* Luxury Hero Section */}
-        <section className="relative w-full py-20 lg:py-32 flex items-center justify-center overflow-hidden bg-slate-50">
+        <section className="relative w-full py-20 lg:py-32 flex items-center justify-center overflow-x-hidden bg-slate-50">
           <div className="container px-4 md:px-6 relative z-10">
             <div className="flex flex-col items-center text-center space-y-10">
               <div className="space-y-6 max-w-4xl">
@@ -97,7 +97,7 @@ export default async function LandingPage() {
         </section>
 
         {/* Value Proposition */}
-        <section id="services" className="w-full py-24 bg-slate-900 text-white overflow-hidden relative">
+        <section id="services" className="relative w-full py-24 bg-slate-900 text-white overflow-hidden">
           <div className="container px-4 md:px-6 relative z-10">
             <div className="grid gap-12 lg:grid-cols-2 items-center">
               <div className="space-y-8">

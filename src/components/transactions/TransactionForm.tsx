@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { addTransaction } from "@/lib/actions/transaction-actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export function TransactionForm() {
     const [state, dispatch] = useActionState(addTransaction, undefined);
     const formRef = useRef<HTMLFormElement>(null);
     const [type, setType] = useState("EXPENSE");
+    const [date, setDate] = useState<Date | undefined>(new Date());
 
     const expenseCategories = [
         "Food",
@@ -82,7 +84,8 @@ export function TransactionForm() {
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Date</label>
-                        <Input name="date" type="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                        <DatePicker date={date} setDate={setDate} />
+                        <input type="hidden" name="date" value={date ? date.toISOString().split('T')[0] : ""} />
                     </div>
 
                     {state && (
