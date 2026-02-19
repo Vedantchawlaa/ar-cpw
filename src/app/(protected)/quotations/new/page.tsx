@@ -80,7 +80,7 @@ export default async function NewQuotationPage({
                             if (item.trackRequired !== false && item.trackProduct) {
                                 const trackProduct = allProducts.find((p: any) => p.id === item.trackProduct);
                                 if (trackProduct) {
-                                    const trackSize = parseFloat(item.trackSize || "0");
+                                    const trackSize = parseFloat(item.trackSize || "0") / 12;
                                     items.push({
                                         id: `${items.length + 1}`,
                                         description: `${trackProduct.name} - ${item.name} (${room.name}, ${floor.name})`,
@@ -91,7 +91,7 @@ export default async function NewQuotationPage({
                                 }
                             } else if (item.trackRequired !== false) {
                                 // Add placeholder for track if required but not selected
-                                const trackSize = parseFloat(item.trackSize || "0");
+                                const trackSize = parseFloat(item.trackSize || "0") / 12;
                                 if (trackSize > 0) {
                                     items.push({
                                         id: `${items.length + 1}`,
@@ -135,7 +135,7 @@ export default async function NewQuotationPage({
                                 if (sheerTrackProductId) {
                                     const sheerTrackProduct = allProducts.find((p: any) => p.id === sheerTrackProductId);
                                     if (sheerTrackProduct) {
-                                        const trackSize = parseFloat(item.trackSize || "0");
+                                        const trackSize = parseFloat(item.trackSize || "0") / 12;
                                         items.push({
                                             id: `${items.length + 1}`,
                                             description: `${sheerTrackProduct.name} (Sheer Track) - ${item.name} (${room.name}, ${floor.name})`,
@@ -145,7 +145,7 @@ export default async function NewQuotationPage({
                                         });
                                     }
                                 } else {
-                                    const trackSize = parseFloat(item.trackSize || "0");
+                                    const trackSize = parseFloat(item.trackSize || "0") / 12;
                                     if (trackSize > 0) {
                                         items.push({
                                             id: `${items.length + 1}`,
