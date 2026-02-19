@@ -4,27 +4,13 @@ import { auth, signOut } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 // @ts-ignore
 import { ArrowRight, Star, Ruler, Truck, ShieldCheck, Smartphone, Sparkles, MapPin, Instagram, MessageCircle, Facebook, Phone } from "lucide-react";
-import { HamburgerMenu } from "@/components/shop/HamburgerMenu";
+import { PublicHeader } from "@/components/layout/PublicHeader";
 
 export default async function LandingPage() {
   const session = await auth();
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
-        <div className="container flex h-16 max-w-screen-2xl items-center px-4 md:px-6">
-          <Link className="flex items-center gap-3 group" href="/">
-            <img src="/logo.png" alt="Chawla Parde Wala Logo" className="h-10 w-auto transition-transform group-hover:scale-105" />
-            <div className="flex flex-col text-left">
-              <span className="font-bold text-sm tracking-tight leading-none text-slate-900 uppercase">CHAWLA</span>
-              <span className="text-[10px] font-medium text-slate-500 tracking-[0.2em] uppercase">PARDE WALA</span>
-            </div>
-          </Link>
-          <div className="ml-auto">
-            <HamburgerMenu />
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="flex-1">
         {/* Luxury Hero Section */}
@@ -44,10 +30,10 @@ export default async function LandingPage() {
                   expert installation to your home. From motorized blinds to designer drapes.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 min-w-[200px]">
+              <div className="flex flex-col sm:flex-row gap-4 min-w-[260px]">
                 <Button asChild size="lg" className="rounded-full h-14 px-10 text-lg font-bold shadow-2xl shadow-indigo-200 bg-slate-900 group">
-                  <Link href="#collections">
-                    Explore Collection <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  <Link href="#collections" className="flex items-center">
+                    Explore Collection <ArrowRight className="flex ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="rounded-full h-14 px-10 text-lg font-bold border-2 bg-white hover:bg-slate-50 transition-colors">

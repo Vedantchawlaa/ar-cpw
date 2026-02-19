@@ -28,11 +28,7 @@ export function HamburgerMenu() {
     }, [isOpen]);
 
     const menuItems = [
-        { href: "/shop", icon: ShoppingBag, label: "Shop" },
-        { href: "/shop?category=collections", icon: Grid, label: "Our Collections" },
         { href: "/about", icon: Info, label: "About Us" },
-        { href: "/contact", icon: Mail, label: "Contact Us" },
-        { href: "/blog", icon: FileText, label: "Blog" },
     ];
 
     // Add My Orders if user is logged in

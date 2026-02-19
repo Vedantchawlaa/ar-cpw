@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { MapPin, Smartphone, Mail, Clock, Instagram, Facebook, MessageCircle } from "lucide-react";
 import React, { useRef, useState } from 'react';
 import emailjs from '@emailjs/browser';
-import { HamburgerMenu } from "@/components/shop/HamburgerMenu";
+import { PublicHeader } from "@/components/layout/PublicHeader";
 
 export default function ContactPage() {
     const form = useRef<HTMLFormElement>(null);
@@ -41,20 +41,7 @@ export default function ContactPage() {
 
     return (
         <div className="flex min-h-screen flex-col bg-white">
-            <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
-                <div className="container flex h-16 max-w-screen-2xl items-center px-4 md:px-6">
-                    <Link className="flex items-center gap-3 group" href="/">
-                        <img src="/logo.png" alt="Chawla Parde Wala Logo" className="h-10 w-auto transition-transform group-hover:scale-105" />
-                        <div className="flex flex-col text-left">
-                            <span className="font-bold text-sm tracking-tight leading-none text-slate-900">CHAWLA</span>
-                            <span className="text-[10px] font-medium text-slate-500 tracking-[0.2em]">PARDE WALA</span>
-                        </div>
-                    </Link>
-                    <div className="ml-auto">
-                        <HamburgerMenu />
-                    </div>
-                </div>
-            </header>
+            <PublicHeader />
 
             <main className="flex-1">
                 <section className="w-full py-12 md:py-24 lg:py-32 bg-slate-50">
@@ -178,6 +165,32 @@ export default function ContactPage() {
                                     )}
                                 </form>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="w-full py-12 md:py-24 bg-slate-50">
+                    <div className="container px-4 md:px-6">
+                        <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+                            <div className="space-y-2">
+                                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-slate-900 uppercase">Find Us on Map</h2>
+                                <p className="max-w-[700px] text-slate-500 md:text-xl font-medium">
+                                    Visit our showroom to experience our premium collection in person.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mx-auto max-w-5xl rounded-2xl overflow-hidden border border-slate-200 shadow-2xl bg-white p-2">
+                            <iframe
+                                title="Chawla Parde Wala Location"
+                                src="https://maps.google.com/maps?q=Shop%20103,%20110%20SD%20College%20Road,%20Panipat,%20Haryana%20132103&t=&z=16&ie=UTF8&iwloc=&output=embed"
+                                width="100%"
+                                height="500"
+                                style={{ border: 0 }}
+                                allowFullScreen={true}
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                                className="rounded-xl"
+                            />
                         </div>
                     </div>
                 </section>
