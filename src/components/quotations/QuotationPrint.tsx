@@ -345,11 +345,22 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                 <div className="relative z-10 flex justify-between items-end gap-8 mb-4 break-inside-avoid">
                     {/* Enlarged QR Code on the Left */}
                     <div className="flex flex-col items-start gap-2">
-                        <div className="h-48 w-48 bg-white p-2 border-2 border-zinc-100 rounded-xl shadow-sm">
+                        <div className="h-48 w-48 bg-white p-2 border-2 border-zinc-100 rounded-xl shadow-sm overflow-hidden flex items-center justify-center">
                             <img
-                                src="/QR.png"
+                                src="/qr.png"
                                 alt="Payment QR"
                                 className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    console.error("QR Code failed to load");
+                                    e.currentTarget.style.display = 'none';
+                                    const parent = e.currentTarget.parentElement;
+                                    if (parent) {
+                                        const errorMsg = document.createElement('div');
+                                        errorMsg.className = 'text-[10px] text-zinc-400 font-bold text-center p-4';
+                                        errorMsg.innerText = 'PAYMENT QR NOT FOUND\nPLEASE CHECK /public/qr.png';
+                                        parent.appendChild(errorMsg);
+                                    }
+                                }}
                             />
                         </div>
                     </div>
