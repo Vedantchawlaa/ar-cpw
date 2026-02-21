@@ -199,7 +199,7 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
             >
                 {sharingQuotation && (
                     <div id={`quotation-share-${sharingQuotation.id}`}>
-                        <QuotationPrint quotation={sharingQuotation} />
+                        <QuotationPrint quotation={sharingQuotation} layoutMode="compact" />
                     </div>
                 )}
             </div>

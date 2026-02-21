@@ -13,10 +13,11 @@ import { updateQuotation } from "@/lib/actions/quotation-actions";
 
 interface QuotationPrintProps {
     quotation: QuotationWithRelations;
+    layoutMode?: 'standard' | 'compact';
 }
 
-export default function QuotationPrint({ quotation }: QuotationPrintProps) {
-    const [layoutMode, setLayoutMode] = useState<'standard' | 'compact'>('standard');
+export default function QuotationPrint({ quotation, layoutMode: initialLayout = 'standard' }: QuotationPrintProps) {
+    const [layoutMode, setLayoutMode] = useState<'standard' | 'compact'>(initialLayout);
 
     // Payment State
     const [receivedAmount, setReceivedAmount] = useState(
@@ -136,7 +137,19 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
             const element = document.getElementById('quotation-content');
             if (!element) throw new Error("Content not found");
 
+            // For WhatsApp/Reminders, we always want compact PDF
+            const previousLayout = layoutMode;
+            if (previousLayout !== 'compact') {
+                setLayoutMode('compact');
+                // Small delay to allow re-render
+                await new Promise(r => setTimeout(r, 100));
+            }
+
             await generatePDFWithWatermark(element, `Estimate_${quotation.number}.pdf`, true);
+
+            if (previousLayout !== 'compact') {
+                setLayoutMode(previousLayout);
+            }
 
             const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
