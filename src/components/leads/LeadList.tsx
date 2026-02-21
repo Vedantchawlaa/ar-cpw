@@ -90,7 +90,7 @@ export function LeadList({ leads, onEdit }: LeadListProps) {
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-right font-medium">
-                                        ₹{lead.expectedOrderValue.toLocaleString()}
+                                        ₹{Math.round(lead.expectedOrderValue).toLocaleString()}
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         {(lead as any).quotationShared ? (

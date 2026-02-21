@@ -182,7 +182,7 @@ export default function ProcessingOrdersPage() {
                                                     <option value="CANCELLED">CANCELLED</option>
                                                 </select>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-bold">₹{item.total.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-bold">₹{Math.round(item.total).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-center">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <Button variant="outline" size="sm" onClick={() => router.push(`/quotations/${item.id}`)}>

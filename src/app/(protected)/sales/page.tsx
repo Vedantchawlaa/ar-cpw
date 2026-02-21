@@ -65,7 +65,7 @@ export default function SalesPage() {
     // Only count quotations with the status 'SALE' for metrics
     const finalSales = filteredSales.filter(q => q.status === 'SALE');
 
-    const totalRevenue = finalSales.reduce((acc, curr) => acc + (curr.receivedAmount || 0), 0);
+    const totalRevenue = Math.round(finalSales.reduce((acc, curr) => acc + (curr.receivedAmount || 0), 0));
     const avgOrderValue = finalSales.length > 0 ? totalRevenue / finalSales.length : 0;
     const completedSalesCount = finalSales.length;
 
@@ -182,7 +182,7 @@ export default function SalesPage() {
                                                     {item.status}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-medium text-zinc-500">₹{item.total.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-zinc-500">₹{Math.round(item.total).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right font-bold text-emerald-600">₹{(item.receivedAmount || 0).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-center">
                                                 {item.status !== 'SALE' && (

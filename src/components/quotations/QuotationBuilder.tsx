@@ -123,7 +123,9 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     // Calculations
     const subtotal = items.reduce((sum: number, item: LineItem) => sum + item.amount, 0);
     const taxAmount = (subtotal * taxRate) / 100;
-    const total = subtotal + taxAmount - discount;
+    const baseTotal = subtotal + taxAmount - discount;
+    const total = Math.round(baseTotal);
+    const roundOff = total - baseTotal;
 
     const handleItemChange = (id: string, field: keyof LineItem, value: any) => {
         setItems(prev => prev.map(item => {
@@ -518,6 +520,15 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                         onChange={(e) => setReceivedAmount(parseFloat(e.target.value) || 0)}
                                     />
                                 </div>
+                                {Math.abs(roundOff) > 0.001 && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-zinc-500 italic">Round Off</span>
+                                        <span className={cn("font-medium", roundOff >= 0 ? "text-green-600" : "text-amber-600")}>
+                                            {roundOff >= 0 ? "+" : ""}
+                                            {roundOff.toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="pt-4 border-t border-zinc-200 flex justify-between items-center">

@@ -128,7 +128,7 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
 
             let message = "";
             if (type === 'share') {
-                message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${quotation.total.toLocaleString()}. - CHAWLA PARDE WALA`;
+                message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${displayTotal.toLocaleString()}. - CHAWLA PARDE WALA`;
             } else {
                 message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${balanceDue.toLocaleString()} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
             }
@@ -147,7 +147,7 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
 
             let message = "";
             if (type === 'share') {
-                message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${quotation.total.toLocaleString()}. - CHAWLA PARDE WALA`;
+                message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${displayTotal.toLocaleString()}. - CHAWLA PARDE WALA`;
             } else {
                 message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${balanceDue.toLocaleString()} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
             }
@@ -164,7 +164,10 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
         await generatePDFWithWatermark(element, `Estimate_${quotation.number}.pdf`, true);
     };
 
-    const balanceDue = Math.max(0, quotation.total - receivedAmount);
+    const baseTotal = quotation.subtotal + quotation.tax - quotation.discount;
+    const displayTotal = Math.round(baseTotal);
+    const roundOff = displayTotal - baseTotal;
+    const balanceDue = Math.max(0, displayTotal - receivedAmount);
     const hasTax = quotation.tax > 0;
     const hasDiscount = quotation.discount > 0;
 
@@ -386,9 +389,16 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                             </div>
                         )}
 
+                        {Math.abs(roundOff) > 0.001 && (
+                            <div className="flex justify-between text-zinc-400 font-semibold text-[10px] uppercase tracking-wider italic">
+                                <span>Round Off</span>
+                                <span>{roundOff >= 0 ? "+" : ""}₹{roundOff.toFixed(2)}</span>
+                            </div>
+                        )}
+
                         <div className={`flex justify-between border-t-2 border-zinc-900 ${layoutMode === 'compact' ? 'pt-3 text-lg' : 'pt-4 text-xl'} font-bold text-zinc-900`}>
                             <span className="uppercase tracking-[0.15em]">Grand Total</span>
-                            <span>₹{quotation.total.toLocaleString()}</span>
+                            <span>₹{displayTotal.toLocaleString()}</span>
                         </div>
 
                         <div className="flex justify-between items-center text-zinc-500 font-bold text-[11px] uppercase tracking-wider group">
