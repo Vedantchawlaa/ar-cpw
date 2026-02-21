@@ -12,6 +12,7 @@ import { SearchableSelect } from "@/components/ui/SearchableSelect";
 export default function ProductList() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({ name: "", rate: 0 });
@@ -24,11 +25,20 @@ export default function ProductList() {
 
     const fetchProducts = async () => {
         setLoading(true);
-        const result = await getProducts();
-        if (result.success && result.data) {
-            setProducts(result.data);
+        setError(null);
+        try {
+            const response = await fetch('/api/products');
+            const result = await response.json();
+            if (result.success && result.data) {
+                setProducts(result.data);
+            } else if (!result.success) {
+                setError(result.error || "Failed to fetch products");
+            }
+        } catch (err: any) {
+            setError(err.message || "An unexpected error occurred");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const filteredProducts = products.filter(p =>
@@ -167,6 +177,14 @@ export default function ProductList() {
                     <div className="divide-y divide-zinc-100">
                         {loading ? (
                             <div className="py-8 text-center text-zinc-500">Loading products...</div>
+                        ) : error ? (
+                            <div className="py-8 text-center text-red-500">
+                                <p className="font-semibold">Error loading products:</p>
+                                <p className="text-sm">{error}</p>
+                                <Button variant="outline" size="sm" onClick={fetchProducts} className="mt-4">
+                                    Retry
+                                </Button>
+                            </div>
                         ) : filteredProducts.length === 0 ? (
                             <div className="py-8 text-center text-zinc-500">No products found.</div>
                         ) : (

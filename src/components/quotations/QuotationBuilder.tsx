@@ -69,9 +69,14 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     );
 
     const fetchProducts = async () => {
-        const res = await getProducts();
-        if (res.success && res.data) {
-            setProducts(res.data);
+        try {
+            const res = await fetch('/api/products');
+            const data = await res.json();
+            if (data.success && data.data) {
+                setProducts(data.data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch products for builder:", error);
         }
     };
 
