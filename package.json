@@ -15,6 +15,9 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@prisma/client": "^5.22.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@react-three/xr": "^6.6.29",
     "@supabase/supabase-js": "^2.95.3",
     "@types/bcrypt": "^6.0.0",
     "@types/three": "^0.182.0",
@@ -33,7 +36,7 @@
     "pg": "^8.18.0",
     "prisma": "^5.22.0",
     "react": "19.2.3",
-    "react-day-picker": "^8.10.1",
+    "react-day-picker": "^9.13.2",
     "react-dom": "19.2.3",
     "react-qr-code": "^2.0.18",
     "tailwind-merge": "^3.4.0",
