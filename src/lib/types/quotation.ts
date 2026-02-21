@@ -32,6 +32,7 @@ export interface QuotationWithRelations extends Quotation {
 export interface Product {
     id: string;
     name: string;
+    category?: string;
     rate: number;
     createdAt?: Date;
     updatedAt?: Date;
