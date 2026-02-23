@@ -1,10 +1,11 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 // @ts-ignore
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { deleteLead } from "@/lib/actions/lead-actions";
 import { Lead } from "@prisma/client";
 import { cn, formatDate } from "@/lib/utils";
@@ -14,7 +15,52 @@ interface LeadListProps {
     onEdit: (lead: Lead) => void;
 }
 
+type SortConfig = {
+    key: keyof Lead | "nextContactDate" | "description" | "quotationShared";
+    direction: 'asc' | 'desc' | null;
+};
+
 export function LeadList({ leads, onEdit }: LeadListProps) {
+    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'name', direction: null });
+
+    const sortedLeads = useMemo(() => {
+        if (!sortConfig.direction) return leads;
+
+        return [...leads].sort((a: any, b: any) => {
+            const aValue = a[sortConfig.key];
+            const bValue = b[sortConfig.key];
+
+            if (aValue === bValue) return 0;
+            if (aValue === null || aValue === undefined) return 1;
+            if (bValue === null || bValue === undefined) return -1;
+
+            if (sortConfig.direction === 'asc') {
+                return aValue < bValue ? -1 : 1;
+            } else {
+                return aValue > bValue ? -1 : 1;
+            }
+        });
+    }, [leads, sortConfig]);
+
+    const handleSort = (key: SortConfig['key']) => {
+        let direction: SortConfig['direction'] = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+            direction = null;
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIcon = (key: SortConfig['key']) => {
+        if (sortConfig.key !== key || !sortConfig.direction) {
+            return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+        }
+        return sortConfig.direction === 'asc' ?
+            <ArrowUp className="h-3 w-3 ml-1 text-blue-600" /> :
+            <ArrowDown className="h-3 w-3 ml-1 text-blue-600" />;
+    };
+
     if (leads.length === 0) {
         return (
             <Card>
@@ -31,20 +77,36 @@ export function LeadList({ leads, onEdit }: LeadListProps) {
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 border-b text-slate-500 font-medium">
                         <tr>
-                            <th className="px-4 py-3">Name</th>
-                            <th className="px-4 py-3">City</th>
-                            <th className="px-4 py-3">Contact</th>
+                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('name')}>
+                                <div className="flex items-center">Name {getSortIcon('name')}</div>
+                            </th>
+                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('city')}>
+                                <div className="flex items-center">City {getSortIcon('city')}</div>
+                            </th>
+                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('phone')}>
+                                <div className="flex items-center">Contact {getSortIcon('phone')}</div>
+                            </th>
                             <th className="px-4 py-3">Description</th>
-                            <th className="px-4 py-3">Type</th>
-                            <th className="px-4 py-3">Last Contacted</th>
-                            <th className="px-4 py-3">Next Contact</th>
-                            <th className="px-4 py-3 text-right">Value</th>
-                            <th className="px-4 py-3 text-center">Quote Shared</th>
+                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('type')}>
+                                <div className="flex items-center">Type {getSortIcon('type')}</div>
+                            </th>
+                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('lastContacted')}>
+                                <div className="flex items-center">Last Contacted {getSortIcon('lastContacted')}</div>
+                            </th>
+                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('nextContactDate')}>
+                                <div className="flex items-center">Next Contact {getSortIcon('nextContactDate')}</div>
+                            </th>
+                            <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('expectedOrderValue')}>
+                                <div className="flex items-center justify-end">Value {getSortIcon('expectedOrderValue')}</div>
+                            </th>
+                            <th className="px-4 py-3 text-center cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('quotationShared')}>
+                                <div className="flex items-center justify-center">Quote Shared {getSortIcon('quotationShared')}</div>
+                            </th>
                             <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {leads.map((lead) => {
+                        {sortedLeads.map((lead) => {
                             const nextDate = (lead as any).nextContactDate ? new Date((lead as any).nextContactDate) : null;
                             const today = new Date();
                             today.setHours(0, 0, 0, 0);
