@@ -29,17 +29,17 @@ export function AllLeadsDashboard({ initialLeads }: AllLeadsDashboardProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                     <Link href="/leads">
-                        <Button variant="ghost" size="sm" className="gap-2">
+                        <Button variant="ghost" size="sm" className="gap-2 w-fit">
                             <ArrowLeft className="h-4 w-4" />
                             Back to Dashboard
                         </Button>
                     </Link>
-                    <h1 className="text-2xl font-bold tracking-tight">All Leads</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight px-1">All Leads</h1>
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground px-1">
                     Showing {filteredLeads.length} of {initialLeads.length} leads
                 </div>
             </div>

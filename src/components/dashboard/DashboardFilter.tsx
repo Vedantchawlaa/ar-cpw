@@ -88,13 +88,13 @@ export function DashboardFilter() {
             </div>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg border border-slate-200 shadow-xl z-50 p-2 animate-in fade-in zoom-in duration-200">
+                <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-[calc(100vw-2rem)] sm:w-64 bg-white rounded-lg border border-slate-200 shadow-xl z-50 p-2 animate-in fade-in zoom-in duration-200">
                     <div className="space-y-1">
                         <button
                             onClick={() => updateFilter("all")}
                             className={cn(
                                 "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
-                                currentRange === "all" ? "bg-slate-100 font-medium" : "hover:bg-slate-50"
+                                currentRange === "all" ? "bg-slate-100 font-medium text-slate-900" : "hover:bg-slate-50 text-slate-700"
                             )}
                         >
                             All Time
@@ -105,7 +105,7 @@ export function DashboardFilter() {
                                 onClick={() => updateFilter(preset.value)}
                                 className={cn(
                                     "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                                    currentRange === preset.value ? "bg-slate-100 font-medium" : "hover:bg-slate-50"
+                                    currentRange === preset.value ? "bg-slate-100 font-medium text-slate-900" : "hover:bg-slate-50 text-slate-700"
                                 )}
                             >
                                 {preset.label}
@@ -114,34 +114,40 @@ export function DashboardFilter() {
                         ))}
                     </div>
 
-                    {currentRange === "custom" || searchParams.get("range") === "custom" ? (
+                    {(currentRange === "custom" || searchParams.get("range") === "custom") && (
                         <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
                             <div className="space-y-2">
                                 <label className="text-[10px] uppercase font-bold text-slate-500 px-1 tracking-wider text-left block">Date Range</label>
-                                <div className="grid grid-cols-1 gap-2 p-1 text-left">
-                                    <DatePicker
-                                        date={startDate}
-                                        setDate={setStartDate}
-                                        placeholder="From date"
-                                        className="h-8"
-                                    />
-                                    <DatePicker
-                                        date={endDate}
-                                        setDate={setEndDate}
-                                        placeholder="To date"
-                                        className="h-8"
-                                    />
+                                <div className="grid grid-cols-1 gap-3 p-1 text-left">
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] text-slate-400 font-medium ml-1 uppercase">From</p>
+                                        <DatePicker
+                                            date={startDate}
+                                            setDate={setStartDate}
+                                            placeholder="Pick start date"
+                                            className="h-9 w-full"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] text-slate-400 font-medium ml-1 uppercase">To</p>
+                                        <DatePicker
+                                            date={endDate}
+                                            setDate={setEndDate}
+                                            placeholder="Pick end date"
+                                            className="h-9 w-full"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             <Button
                                 size="sm"
-                                className="w-full h-8 text-xs bg-slate-900 text-white hover:bg-slate-800"
+                                className="w-full h-9 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800"
                                 onClick={handleCustomSubmit}
                             >
-                                Apply Range
+                                Apply Custom Range
                             </Button>
                         </div>
-                    ) : null}
+                    )}
                 </div>
             )}
         </div>
