@@ -8,15 +8,20 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Search, Plus, Pencil, Trash2, Save, X } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { cn } from "@/lib/utils";
 
 export default function ProductList() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({ name: "", rate: 0 });
     const [isAdding, setIsAdding] = useState(false);
     const [newForm, setNewForm] = useState({ name: "", rate: 0, stockQuantity: 0, category: "" });
+    const [selectedCategory, setSelectedCategory] = useState("All");
+
+    const categories = ["All", "Fabric", "Tracks", "Blinds", "Accessories", "Rods"];
 
     useEffect(() => {
         fetchProducts();
@@ -24,16 +29,27 @@ export default function ProductList() {
 
     const fetchProducts = async () => {
         setLoading(true);
-        const result = await getProducts();
-        if (result.success && result.data) {
-            setProducts(result.data);
+        setError(null);
+        try {
+            const response = await fetch('/api/products');
+            const result = await response.json();
+            if (result.success && result.data) {
+                setProducts(result.data);
+            } else if (!result.success) {
+                setError(result.error || "Failed to fetch products");
+            }
+        } catch (err: any) {
+            setError(err.message || "An unexpected error occurred");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredProducts = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+        const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
 
     const handleEdit = (product: Product) => {
         setEditingId(product.id);
@@ -95,130 +111,164 @@ export default function ProductList() {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
-                    {/* Add New Header */}
-                    {isAdding && (
-                        <div className="grid grid-cols-12 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-100 animate-in fade-in slide-in-from-top-2">
-                            <div className="col-span-12 md:col-span-4">
-                                <label className="text-xs font-semibold text-blue-700 mb-1 block">NAME</label>
-                                <Input
-                                    value={newForm.name}
-                                    onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
-                                    placeholder="Product Name"
-                                    className="h-10 border-blue-200"
-                                />
-                            </div>
-                            <div className="col-span-6 md:col-span-2">
-                                <label className="text-xs font-semibold text-blue-700 mb-1 block">CATEGORY</label>
-                                <SearchableSelect
-                                    options={[
-                                        { id: "Tracks", name: "Tracks" },
-                                        { id: "Accessories", name: "Accessories" },
-                                        { id: "Rods", name: "Rods" },
-                                        { id: "Fabric", name: "Fabric" },
-                                        { id: "Blinds", name: "Blinds" },
-                                    ]}
-                                    value={newForm.category || ""}
-                                    onChange={(val) => setNewForm({ ...newForm, category: val })}
-                                    placeholder="Select..."
-                                    className="h-10 border-blue-200"
-                                />
-                            </div>
-                            <div className="col-span-6 md:col-span-2">
-                                <label className="text-xs font-semibold text-blue-700 mb-1 block">RATE (₹)</label>
-                                <Input
-                                    type="number"
-                                    value={newForm.rate}
-                                    onChange={(e) => setNewForm({ ...newForm, rate: parseFloat(e.target.value) || 0 })}
-                                    className="h-10 border-blue-200"
-                                />
-                            </div>
-                            <div className="col-span-6 md:col-span-2">
-                                <label className="text-xs font-semibold text-blue-700 mb-1 block">INITIAL STOCK</label>
-                                <Input
-                                    type="number"
-                                    value={newForm.stockQuantity}
-                                    onChange={(e) => setNewForm({ ...newForm, stockQuantity: parseInt(e.target.value) || 0 })}
-                                    placeholder="0"
-                                    className="h-10 border-blue-200"
-                                />
-                            </div>
-                            <div className="col-span-6 md:col-span-2 flex items-end gap-2">
-                                {/* @ts-ignore */}
-                                <Button size="icon" onClick={handleAdd} className="h-10 w-10">
-                                    <Save className="h-4 w-4" />
-                                </Button>
-                                {/* @ts-ignore */}
-                                <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="h-10 w-10 text-zinc-500">
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Table Headers */}
-                    <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-zinc-50 rounded-md text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                        <div className="col-span-6">Product Name</div>
-                        <div className="col-span-4 text-right pr-4">Rate</div>
-                        <div className="col-span-2 text-center">Actions</div>
+                <div className="space-y-6">
+                    {/* Category Tabs */}
+                    <div className="flex flex-wrap gap-2 border-b border-zinc-100 pb-4">
+                        {categories.map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={cn(
+                                    "px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all",
+                                    selectedCategory === cat
+                                        ? "bg-zinc-900 text-white shadow-md shadow-zinc-200"
+                                        : "bg-zinc-100 text-zinc-500 hover:bg-zinc-200"
+                                )}
+                            >
+                                {cat}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Product List */}
-                    <div className="divide-y divide-zinc-100">
-                        {loading ? (
-                            <div className="py-8 text-center text-zinc-500">Loading products...</div>
-                        ) : filteredProducts.length === 0 ? (
-                            <div className="py-8 text-center text-zinc-500">No products found.</div>
-                        ) : (
-                            filteredProducts.map(product => (
-                                <div key={product.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center group hover:bg-zinc-50 transition-colors">
-                                    {editingId === product.id ? (
-                                        <>
-                                            <div className="col-span-6">
-                                                <Input
-                                                    value={editForm.name}
-                                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                                    className="h-9"
-                                                />
-                                            </div>
-                                            <div className="col-span-4 text-right pr-4">
-                                                <Input
-                                                    type="number"
-                                                    value={editForm.rate}
-                                                    onChange={(e) => setEditForm({ ...editForm, rate: parseFloat(e.target.value) || 0 })}
-                                                    className="h-9 text-right"
-                                                />
-                                            </div>
-                                            <div className="col-span-2 flex justify-center gap-1">
-                                                {/* @ts-ignore */}
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdate}>
-                                                    <Save className="h-4 w-4" />
-                                                </Button>
-                                                {/* @ts-ignore */}
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400" onClick={() => setEditingId(null)}>
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="col-span-6 text-sm font-medium text-zinc-900">{product.name}</div>
-                                            <div className="col-span-4 text-right pr-4 text-sm font-semibold text-zinc-700">₹{product.rate.toLocaleString()}</div>
-                                            <div className="col-span-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {/* @ts-ignore */}
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600" onClick={() => handleEdit(product)}>
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                {/* @ts-ignore */}
-                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => handleDelete(product.id)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </>
-                                    )}
+                    <div className="space-y-4">
+                        {/* Add New Header */}
+                        {isAdding && (
+                            <div className="grid grid-cols-12 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-100 animate-in fade-in slide-in-from-top-2">
+                                <div className="col-span-12 md:col-span-4">
+                                    <label className="text-xs font-semibold text-blue-700 mb-1 block">NAME</label>
+                                    <Input
+                                        value={newForm.name}
+                                        onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
+                                        placeholder="Product Name"
+                                        className="h-10 border-blue-200"
+                                    />
                                 </div>
-                            ))
+                                <div className="col-span-6 md:col-span-2">
+                                    <label className="text-xs font-semibold text-blue-700 mb-1 block">CATEGORY</label>
+                                    <SearchableSelect
+                                        options={[
+                                            { id: "Tracks", name: "Tracks" },
+                                            { id: "Accessories", name: "Accessories" },
+                                            { id: "Rods", name: "Rods" },
+                                            { id: "Fabric", name: "Fabric" },
+                                            { id: "Blinds", name: "Blinds" },
+                                        ]}
+                                        value={newForm.category || ""}
+                                        onChange={(val) => setNewForm({ ...newForm, category: val })}
+                                        placeholder="Select..."
+                                        className="h-10 border-blue-200"
+                                    />
+                                </div>
+                                <div className="col-span-6 md:col-span-2">
+                                    <label className="text-xs font-semibold text-blue-700 mb-1 block">RATE (₹)</label>
+                                    <Input
+                                        type="number"
+                                        value={newForm.rate}
+                                        onChange={(e) => setNewForm({ ...newForm, rate: parseFloat(e.target.value) || 0 })}
+                                        className="h-10 border-blue-200"
+                                    />
+                                </div>
+                                <div className="col-span-6 md:col-span-2">
+                                    <label className="text-xs font-semibold text-blue-700 mb-1 block">INITIAL STOCK</label>
+                                    <Input
+                                        type="number"
+                                        value={newForm.stockQuantity}
+                                        onChange={(e) => setNewForm({ ...newForm, stockQuantity: parseInt(e.target.value) || 0 })}
+                                        placeholder="0"
+                                        className="h-10 border-blue-200"
+                                    />
+                                </div>
+                                <div className="col-span-6 md:col-span-2 flex items-end gap-2">
+                                    {/* @ts-ignore */}
+                                    <Button size="icon" onClick={handleAdd} className="h-10 w-10">
+                                        <Save className="h-4 w-4" />
+                                    </Button>
+                                    {/* @ts-ignore */}
+                                    <Button variant="ghost" size="icon" onClick={() => setIsAdding(false)} className="h-10 w-10 text-zinc-500">
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
                         )}
+
+                        {/* Table Headers */}
+                        <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-zinc-50 rounded-md text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                            <div className="col-span-5">Product Name</div>
+                            <div className="col-span-3">Category</div>
+                            <div className="col-span-2 text-right pr-4">Rate</div>
+                            <div className="col-span-2 text-center">Actions</div>
+                        </div>
+
+                        {/* Product List */}
+                        <div className="divide-y divide-zinc-100">
+                            {loading ? (
+                                <div className="py-8 text-center text-zinc-500">Loading products...</div>
+                            ) : error ? (
+                                <div className="py-8 text-center text-red-500">
+                                    <p className="font-semibold">Error loading products:</p>
+                                    <p className="text-sm">{error}</p>
+                                    <Button variant="outline" size="sm" onClick={fetchProducts} className="mt-4">
+                                        Retry
+                                    </Button>
+                                </div>
+                            ) : filteredProducts.length === 0 ? (
+                                <div className="py-8 text-center text-zinc-500">No products found.</div>
+                            ) : (
+                                filteredProducts.map(product => (
+                                    <div key={product.id} className="grid grid-cols-12 gap-4 px-4 py-4 items-center group hover:bg-zinc-50 transition-colors">
+                                        {editingId === product.id ? (
+                                            <>
+                                                <div className="col-span-6">
+                                                    <Input
+                                                        value={editForm.name}
+                                                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="col-span-4 text-right pr-4">
+                                                    <Input
+                                                        type="number"
+                                                        value={editForm.rate}
+                                                        onChange={(e) => setEditForm({ ...editForm, rate: parseFloat(e.target.value) || 0 })}
+                                                        className="h-9 text-right"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2 flex justify-center gap-1">
+                                                    {/* @ts-ignore */}
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdate}>
+                                                        <Save className="h-4 w-4" />
+                                                    </Button>
+                                                    {/* @ts-ignore */}
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400" onClick={() => setEditingId(null)}>
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="col-span-5 text-sm font-medium text-zinc-900">{product.name}</div>
+                                                <div className="col-span-3">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter bg-zinc-100 text-zinc-600 border border-zinc-200">
+                                                        {product.category || "Uncategorized"}
+                                                    </span>
+                                                </div>
+                                                <div className="col-span-2 text-right pr-4 text-sm font-semibold text-zinc-700">₹{product.rate.toLocaleString()}</div>
+                                                <div className="col-span-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {/* @ts-ignore */}
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600" onClick={() => handleEdit(product)}>
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    {/* @ts-ignore */}
+                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => handleDelete(product.id)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             </CardContent>

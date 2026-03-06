@@ -8,13 +8,15 @@ import { getQuotations, getActiveOrders, markAsSale, updateQuotation, updateOrde
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
+import { formatDate } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export default function ProcessingOrdersPage() {
     const router = useRouter();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+    const [endDate, setEndDate] = useState<Date | undefined>(undefined);
     const [searchTerm, setSearchTerm] = useState("");
     const [orderToComplete, setOrderToComplete] = useState<any>(null);
 
@@ -79,8 +81,8 @@ export default function ProcessingOrdersPage() {
     });
 
     const clearFilters = () => {
-        setStartDate("");
-        setEndDate("");
+        setStartDate(undefined);
+        setEndDate(undefined);
     };
 
     return (
@@ -100,18 +102,18 @@ export default function ProcessingOrdersPage() {
                         />
                     </div>
                     <div className="flex items-center gap-2 bg-white p-1 rounded-md border border-slate-200">
-                        <Input
-                            type="date"
-                            className="w-40 border-0 focus-visible:ring-0 h-8"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
+                        <DatePicker
+                            date={startDate}
+                            setDate={setStartDate}
+                            placeholder="From date"
+                            className="w-40"
                         />
                         <span className="text-slate-400">to</span>
-                        <Input
-                            type="date"
-                            className="w-40 border-0 focus-visible:ring-0 h-8"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
+                        <DatePicker
+                            date={endDate}
+                            setDate={setEndDate}
+                            placeholder="To date"
+                            className="w-40"
                         />
                         {(startDate || endDate) && (
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={clearFilters}>
@@ -150,17 +152,16 @@ export default function ProcessingOrdersPage() {
                                         <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors">
                                             <td className="px-4 py-3 font-medium">{item.number}</td>
                                             <td className="px-4 py-3">{item.lead.name}</td>
-                                            <td className="px-4 py-3 text-zinc-500">{new Date(item.date).toLocaleDateString()}</td>
+                                            <td className="px-4 py-3 text-zinc-500">{formatDate(item.date)}</td>
                                             <td className="px-4 py-3">
-                                                <Input
-                                                    type="date"
-                                                    className="w-32 h-8 text-xs"
-                                                    value={item.deadline ? new Date(item.deadline).toISOString().split('T')[0] : ''}
-                                                    onChange={async (e) => {
-                                                        const newDeadline = e.target.value;
-                                                        await updateOrderStatus(item.id, item.status, newDeadline);
+                                                <DatePicker
+                                                    date={item.deadline ? new Date(item.deadline) : undefined}
+                                                    setDate={async (newDate) => {
+                                                        const deadlineStr = newDate ? newDate.toISOString().split('T')[0] : '';
+                                                        await updateOrderStatus(item.id, item.status, deadlineStr);
                                                         fetchData();
                                                     }}
+                                                    className="w-40"
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
@@ -181,7 +182,7 @@ export default function ProcessingOrdersPage() {
                                                     <option value="CANCELLED">CANCELLED</option>
                                                 </select>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-bold">₹{item.total.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-bold">₹{Math.round(item.total).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-center">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <Button variant="outline" size="sm" onClick={() => router.push(`/quotations/${item.id}`)}>

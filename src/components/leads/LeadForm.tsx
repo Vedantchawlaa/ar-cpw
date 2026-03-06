@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/Card";
 import { createLead, updateLead } from "@/lib/actions/lead-actions";
 import { Lead } from "@prisma/client";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 interface LeadFormProps {
     initialData?: Lead | null;
@@ -15,6 +16,13 @@ interface LeadFormProps {
 export function LeadForm({ initialData, onSuccess }: LeadFormProps) {
     const [error, setError] = useState<string | null>(null);
     const formRef = useRef<HTMLFormElement>(null);
+
+    const [lastContacted, setLastContacted] = useState<Date | undefined>(
+        initialData?.lastContacted ? new Date(initialData.lastContacted) : new Date()
+    );
+    const [nextContactDate, setNextContactDate] = useState<Date | undefined>(
+        (initialData as any)?.nextContactDate ? new Date((initialData as any).nextContactDate) : undefined
+    );
 
     const handleSubmit = async (formData: FormData) => {
         setError(null);
@@ -60,21 +68,27 @@ export function LeadForm({ initialData, onSuccess }: LeadFormProps) {
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="lastContacted" className="text-sm font-medium">Last Contacted</label>
-                            <Input
-                                id="lastContacted"
+                            <DatePicker
+                                date={lastContacted}
+                                setDate={setLastContacted}
+                            />
+                            <input
+                                type="hidden"
                                 name="lastContacted"
-                                type="date"
-                                required
-                                defaultValue={initialData?.lastContacted ? (initialData.lastContacted as any).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                                value={lastContacted ? lastContacted.toISOString().split('T')[0] : ""}
                             />
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="nextContactDate" className="text-sm font-medium">Next Contact Date (Reminder)</label>
-                            <Input
-                                id="nextContactDate"
+                            <DatePicker
+                                date={nextContactDate}
+                                setDate={setNextContactDate}
+                                placeholder="Set reminder date"
+                            />
+                            <input
+                                type="hidden"
                                 name="nextContactDate"
-                                type="date"
-                                defaultValue={(initialData as any)?.nextContactDate ? ((initialData as any).nextContactDate as any).toISOString().split('T')[0] : ""}
+                                value={nextContactDate ? nextContactDate.toISOString().split('T')[0] : ""}
                             />
                         </div>
                         <div className="space-y-2">

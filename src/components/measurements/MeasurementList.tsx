@@ -9,6 +9,7 @@ import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { deleteMeasurement, generateQuotationFromMeasurement } from "@/lib/actions/measurement-actions";
 import { getProducts } from "@/lib/actions/product-actions";
+import { formatDate } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export function MeasurementList({ measurements }: { measurements: any[] }) {
@@ -76,7 +77,7 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.text(`Customer: ${measurement.customerName || 'N/A'}`, 15, 30);
-            doc.text(`Date: ${new Date(measurement.updatedAt).toLocaleDateString()}`, 15, 36);
+            doc.text(`Date: ${formatDate(measurement.updatedAt)}`, 15, 36);
             doc.text('Chawla Parde Wala', pageWidth - 15, 30, { align: 'right' });
 
             let yPos = 45;
@@ -296,8 +297,8 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
                                             {m.title || "Untitled Measurement"}
                                         </CardTitle>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs text-slate-400 whitespace-nowrap" suppressHydrationWarning>
-                                                {new Date(m.updatedAt).toLocaleDateString()}
+                                            <span className="text-xs text-slate-400 whitespace-nowrap">
+                                                {formatDate(m.updatedAt)}
                                             </span>
                                             <button
                                                 onClick={(e) => generatePDF(m, e)}

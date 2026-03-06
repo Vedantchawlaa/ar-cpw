@@ -1,4 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { formatDate } from "@/lib/utils";
 // @ts-ignore
 import { TrendingUp, TrendingDown, Clock } from "lucide-react";
 
@@ -39,7 +40,7 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
                         <p className={`font-bold ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
                             {t.type === 'INCOME' ? '+' : '-'}₹{t.amount.toLocaleString()}
                         </p>
-                        <p className="text-xs text-muted-foreground">{new Date(t.date).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
                     </div>
                 </div>
             ))}

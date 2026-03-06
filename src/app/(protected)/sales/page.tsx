@@ -8,13 +8,15 @@ import { getQuotations, markAsSale } from "@/lib/actions/quotation-actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
+import { formatDate } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export default function SalesPage() {
     const router = useRouter();
     const [sales, setSales] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+    const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
     const fetchData = async () => {
         setLoading(true);
@@ -63,13 +65,13 @@ export default function SalesPage() {
     // Only count quotations with the status 'SALE' for metrics
     const finalSales = filteredSales.filter(q => q.status === 'SALE');
 
-    const totalRevenue = finalSales.reduce((acc, curr) => acc + (curr.receivedAmount || 0), 0);
+    const totalRevenue = Math.round(finalSales.reduce((acc, curr) => acc + (curr.receivedAmount || 0), 0));
     const avgOrderValue = finalSales.length > 0 ? totalRevenue / finalSales.length : 0;
     const completedSalesCount = finalSales.length;
 
     const clearFilters = () => {
-        setStartDate("");
-        setEndDate("");
+        setStartDate(undefined);
+        setEndDate(undefined);
     };
 
     return (
@@ -81,18 +83,18 @@ export default function SalesPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-2 bg-white p-1 rounded-md border border-slate-200">
-                        <Input
-                            type="date"
-                            className="w-40 border-0 focus-visible:ring-0 h-8"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
+                        <DatePicker
+                            date={startDate}
+                            setDate={setStartDate}
+                            placeholder="From date"
+                            className="w-40"
                         />
                         <span className="text-slate-400">to</span>
-                        <Input
-                            type="date"
-                            className="w-40 border-0 focus-visible:ring-0 h-8"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
+                        <DatePicker
+                            date={endDate}
+                            setDate={setEndDate}
+                            placeholder="To date"
+                            className="w-40"
                         />
                         {(startDate || endDate) && (
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" onClick={clearFilters}>
@@ -171,7 +173,7 @@ export default function SalesPage() {
                                         <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors">
                                             <td className="px-4 py-3 font-medium">{item.number}</td>
                                             <td className="px-4 py-3">{item.lead.name}</td>
-                                            <td className="px-4 py-3 text-zinc-500">{new Date(item.date).toLocaleDateString()}</td>
+                                            <td className="px-4 py-3 text-zinc-500">{formatDate(item.date)}</td>
                                             <td className="px-4 py-3">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${item.status === 'SALE' ? 'bg-emerald-100 text-emerald-800' :
                                                     item.status === 'ACCEPTED' ? 'bg-blue-100 text-blue-800' :
@@ -180,7 +182,7 @@ export default function SalesPage() {
                                                     {item.status}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-medium text-zinc-500">₹{item.total.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-zinc-500">₹{Math.round(item.total).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right font-bold text-emerald-600">₹{(item.receivedAmount || 0).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-center">
                                                 {item.status !== 'SALE' && (

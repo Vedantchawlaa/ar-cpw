@@ -473,105 +473,61 @@ export function MeasurementEditor({
     return (
         <div className="space-y-6 print:hidden">
 
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                 <div className="flex-1">
                     <h2 className="text-xl font-semibold">Measurements & Sizing</h2>
-                    {!leadId && (
-                        <div className="flex gap-4 mt-4">
-                            <div className="w-1/2">
-                                <label className="text-sm font-medium mb-1 block">Title / Reference</label>
-                                <Input
-                                    placeholder="e.g. Dream House, Office Renovation"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                />
-                            </div>
-                            <div className="w-1/2">
-                                <label className="text-sm font-medium mb-1 block">Lead / Customer</label>
-                                <SearchableSelect
-                                    options={[
-                                        ...leads.map((l: any) => ({ id: l.id, name: `${l.name} - ${l.city || "No city"}` })),
-                                        { id: "new", name: "+ Create New Lead" }
-                                    ]}
-                                    value={selectedLeadId}
-                                    onChange={(value) => {
-                                        if (value === "new") {
-                                            setShowNewLeadForm(true);
-                                            setSelectedLeadId("");
-                                        } else {
-                                            setSelectedLeadId(value);
-                                            setShowNewLeadForm(false);
-                                            const selected = leads.find(l => l.id === value);
-                                            if (selected) {
-                                                setCustomerName(selected.name);
-                                            }
-                                        }
-                                    }}
-                                    placeholder="Select lead or create new..."
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {!leadId && showNewLeadForm && (
-                        <div className="mt-4 p-4 border rounded-md bg-blue-50">
-                            <h3 className="text-sm font-semibold mb-3">Create New Lead</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-xs font-medium mb-1 block">Name *</label>
-                                    <Input
-                                        placeholder="Customer Name"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
-                                        className="h-9"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium mb-1 block">Phone</label>
-                                    <Input
-                                        placeholder="Phone Number"
-                                        className="h-9"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-medium mb-1 block">City</label>
-                                    <Input
-                                        placeholder="City"
-                                        className="h-9"
-                                    />
-                                </div>
-                                <div className="flex items-end gap-2">
-                                    <Button
-                                        onClick={() => {
-                                            setShowNewLeadForm(false);
-                                            setSelectedLeadId("");
-                                        }}
-                                        variant="ghost"
-                                        className="h-9"
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-2">Note: Lead will be created when you save the measurement</p>
-                        </div>
-                    )}
+                    <p className="text-xs text-muted-foreground mt-0.5">Manage floors, rooms, and window specifications</p>
                 </div>
-                <div className="flex gap-2 ml-4 self-start mt-1">
-                    {!leadId && (
-                        <Button onClick={handleSave} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                            <Save className="h-4 w-4" />
-                            {loading ? "Saving..." : "Save Changes"}
-                        </Button>
-                    )}
-                    {leadId && (
-                        <Button onClick={handleSave} disabled={loading} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                            <Save className="h-4 w-4" />
-                            {loading ? "Saving..." : "Save Changes"}
-                        </Button>
-                    )}
+                <div className="flex gap-2">
+                    <Button
+                        onClick={handleSave}
+                        disabled={loading}
+                        className="w-full sm:w-auto gap-2 bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95"
+                    >
+                        <Save className="h-4 w-4" />
+                        {loading ? "Saving..." : "Save Changes"}
+                    </Button>
                 </div>
             </div>
+
+            {!leadId && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Title / Reference</label>
+                        <Input
+                            placeholder="e.g. Dream House, Office Renovation"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="h-10"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Lead / Customer</label>
+                        <SearchableSelect
+                            options={[
+                                ...leads.map((l: any) => ({ id: l.id, name: `${l.name} - ${l.city || "No city"}` })),
+                                { id: "new", name: "+ Create New Lead" }
+                            ]}
+                            value={selectedLeadId}
+                            onChange={(value) => {
+                                if (value === "new") {
+                                    setShowNewLeadForm(true);
+                                    setSelectedLeadId("");
+                                } else {
+                                    setSelectedLeadId(value);
+                                    setShowNewLeadForm(false);
+                                    const selected = leads.find(l => l.id === value);
+                                    if (selected) {
+                                        setCustomerName(selected.name);
+                                    }
+                                }
+                            }}
+                            placeholder="Select lead or create new..."
+                            className="h-10"
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="space-y-6">
 
@@ -992,16 +948,48 @@ export function MeasurementEditor({
                     <CardHeader>
                         <CardTitle>General Notes</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-6">
                         <Textarea
                             placeholder="Any additional notes for this site..."
                             value={notes}
                             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}
-                            className="min-h-[100px]"
+                            className="min-h-[120px]"
                         />
+
+                        <div className="flex justify-center pt-4 border-t">
+                            <Button
+                                onClick={handleSave}
+                                disabled={loading}
+                                size="lg"
+                                className="w-full sm:w-64 gap-3 bg-blue-600 hover:bg-blue-700 shadow-lg text-lg h-14"
+                            >
+                                <Save className="h-5 w-5" />
+                                {loading ? "Saving..." : "Finalize & Save"}
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Mobile Sticky Save Bar */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-200 z-[100] sm:hidden flex items-center justify-between gap-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+                <div className="flex-1 truncate">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Draft Changes</p>
+                    <p className="text-xs font-semibold text-slate-900 truncate">{title || initialTitle || "New Measurement"}</p>
+                </div>
+                <Button
+                    onClick={handleSave}
+                    disabled={loading}
+                    size="sm"
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 px-6 h-10 shadow-md font-bold"
+                >
+                    <Save className="h-4 w-4" />
+                    {loading ? "..." : "SAVE"}
+                </Button>
+            </div>
+
+            {/* Spacer for sticky bar */}
+            <div className="h-20 sm:hidden" />
         </div>
 
     );

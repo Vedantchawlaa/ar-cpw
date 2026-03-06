@@ -40,17 +40,19 @@ export async function authenticate(
             throw error;
         }
 
+        console.error("Authenticate action error:", error);
         await logAuth(`Sign in error: ${error.name} - ${error.message} - ${error.type}`);
         if (error instanceof AuthError) {
             await logAuth(`AuthError details: type=${error.type} message=${error.message}`);
+            console.error("AuthError Type:", error.type);
             switch (error.type) {
                 case "CredentialsSignin":
                     return "Invalid credentials.";
                 default:
-                    return `Auth error: ${error.type}`;
+                    return `Auth Error: ${error.type}`;
             }
         }
-        return `Error: ${error.message || "Something went wrong."}`;
+        return `Unexpected Error: ${error.message || "Unknown error"}`;
     }
 }
 

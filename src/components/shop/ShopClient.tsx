@@ -8,7 +8,7 @@ import { useSession, signOut } from "next-auth/react";
 import { Search, ShoppingBag, Filter, Sparkles, ArrowRight, Star, Instagram, MapPin, Smartphone, LogOut, Plus } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { AddProductModal } from "@/components/shop/AddProductModal";
-import { HamburgerMenu } from "@/components/shop/HamburgerMenu";
+import { PublicHeader } from "@/components/layout/PublicHeader";
 
 const CATEGORIES = ["All", "Curtains", "Blinds", "Accessories"];
 
@@ -57,29 +57,7 @@ export function ShopClient({ products }: ShopClientProps) {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
-            {/* Minimal Shop Header */}
-            <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
-                <div className="container flex h-16 max-w-screen-2xl items-center px-4 md:px-6">
-                    <Link className="flex items-center gap-3 group" href="/">
-                        <img src="/logo.png" alt="Chawla Parde Wala Logo" className="h-10 w-auto transition-transform group-hover:scale-105" />
-                        <div className="flex flex-col text-left">
-                            <span className="font-bold text-sm tracking-tight leading-none text-slate-900 uppercase">CHAWLA</span>
-                            <span className="text-[10px] font-medium text-slate-500 tracking-[0.2em] uppercase">PARDE WALA</span>
-                        </div>
-                    </Link>
-                    <div className="ml-auto flex items-center gap-4">
-                        <Link href="/checkout" className="relative">
-                            <ShoppingBag className="h-6 w-6 text-slate-600 hover:text-slate-900 transition-colors" />
-                            {cartCount > 0 && (
-                                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-indigo-600 text-[10px] font-bold text-white flex items-center justify-center">
-                                    {cartCount}
-                                </span>
-                            )}
-                        </Link>
-                        <HamburgerMenu />
-                    </div>
-                </div>
-            </header>
+            <PublicHeader />
 
             <main className="flex-1">
                 {/* Shop Hero */}

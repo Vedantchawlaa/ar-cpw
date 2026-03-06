@@ -31,6 +31,7 @@ interface QuotationBuilderProps {
 interface LineItem {
     id: string;
     description: string;
+    details?: string;
     quantity: number;
     rate: number;
     amount: number;
@@ -47,8 +48,8 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
 
     const [items, setItems] = useState<LineItem[]>(
         initialItems ||
-        initialData?.items.map((i: any) => ({ ...i, id: i.id })) ||
-        [{ id: '1', description: '', quantity: 1, rate: 0, amount: 0 }]
+        initialData?.items.map((i: any) => ({ ...i, id: i.id, details: i.details || "" })) ||
+        [{ id: '1', description: '', details: '', quantity: 1, rate: 0, amount: 0 }]
     );
     const [products, setProducts] = useState<Product[]>([]);
 
@@ -68,9 +69,14 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     );
 
     const fetchProducts = async () => {
-        const res = await getProducts();
-        if (res.success && res.data) {
-            setProducts(res.data);
+        try {
+            const res = await fetch('/api/products');
+            const data = await res.json();
+            if (data.success && data.data) {
+                setProducts(data.data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch products for builder:", error);
         }
     };
 
@@ -95,6 +101,14 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     const [taxRate, setTaxRate] = useState(0);
     const [discount, setDiscount] = useState(0);
     const [receivedAmount, setReceivedAmount] = useState(0);
+    const [description, setDescription] = useState(initialData?.description || "");
+    const [services, setServices] = useState<{ id: string, label: string, enabled: boolean, rate: string | number }[]>(
+        initialData?.services || [
+            { id: '1', label: 'Installation', enabled: false, rate: 0 },
+            { id: '2', label: 'Transport', enabled: false, rate: 0 },
+            { id: '3', label: 'Site Measurement', enabled: false, rate: 0 },
+        ]
+    );
     const [savedProducts, setSavedProducts] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
@@ -109,7 +123,9 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     // Calculations
     const subtotal = items.reduce((sum: number, item: LineItem) => sum + item.amount, 0);
     const taxAmount = (subtotal * taxRate) / 100;
-    const total = subtotal + taxAmount - discount;
+    const baseTotal = subtotal + taxAmount - discount;
+    const total = Math.round(baseTotal);
+    const roundOff = total - baseTotal;
 
     const handleItemChange = (id: string, field: keyof LineItem, value: any) => {
         setItems(prev => prev.map(item => {
@@ -137,7 +153,7 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     const addItem = () => {
         setItems(prev => [
             ...prev,
-            { id: Math.random().toString(), description: '', quantity: 1, rate: 0, amount: 0 }
+            { id: Math.random().toString(), description: '', details: '', quantity: 1, rate: 0, amount: 0 }
         ]);
     };
 
@@ -186,7 +202,9 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                 discount,
                 total,
                 receivedAmount,
-                status: initialData?.status || 'DRAFT'
+                status: initialData?.status || 'DRAFT',
+                description,
+                services
             };
 
             let result;
@@ -280,6 +298,74 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                     </div>
                                 )}
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                <div className="flex flex-col space-y-2">
+                                    <label className="text-sm font-medium text-zinc-700">Description / Notes</label>
+                                    <textarea
+                                        className="flex min-h-[100px] w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Add any special instructions or notes here..."
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="flex flex-col space-y-2">
+                                    <label className="text-sm font-medium text-zinc-700">Additional Services (Optional)</label>
+                                    <div className="border border-zinc-200 rounded-md p-3 space-y-2 bg-zinc-50/30">
+                                        {services.map((service, idx) => (
+                                            <div key={service.id} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`service-${service.id}`}
+                                                    checked={service.enabled}
+                                                    onChange={(e) => {
+                                                        const newServices = [...services];
+                                                        newServices[idx].enabled = e.target.checked;
+                                                        setServices(newServices);
+                                                    }}
+                                                    className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <div className="flex-1 flex items-center space-x-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Service Name"
+                                                        value={service.label}
+                                                        onChange={(e) => {
+                                                            const newServices = [...services];
+                                                            newServices[idx].label = e.target.value;
+                                                            setServices(newServices);
+                                                        }}
+                                                        className="bg-transparent text-sm border-none focus:ring-0 p-0 text-zinc-700 w-full"
+                                                    />
+                                                    <div className="flex items-center space-x-1 min-w-[80px]">
+                                                        <span className="text-zinc-400 text-xs">₹</span>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Price"
+                                                            value={service.rate}
+                                                            onChange={(e) => {
+                                                                const newServices = [...services];
+                                                                newServices[idx].rate = e.target.value;
+                                                                setServices(newServices);
+                                                            }}
+                                                            className="bg-transparent text-sm border-none focus:ring-0 p-0 text-zinc-700 w-full text-right"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => setServices([...services, { id: Math.random().toString(), label: '', enabled: true, rate: 0 }])}
+                                            className="text-xs text-blue-600 hover:underline flex items-center pt-1"
+                                        >
+                                            <Plus className="h-3 w-3 mr-1" /> Add Service
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-zinc-500 italic">* These appear on the estimate with a tick mark but don't add to the total.</p>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -295,42 +381,52 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                             {items.map((item, index) => (
                                 <div key={item.id} className="grid grid-cols-12 gap-2 items-end border-b border-zinc-100 pb-4 last:border-0 last:pb-0">
                                     <div className="col-span-12 md:col-span-5">
-                                        <label className="text-xs font-medium text-zinc-500 mb-1 block uppercase tracking-wider">Description</label>
                                         <div className="relative group">
-                                            <SearchableSelect
-                                                options={products.map(p => ({ id: p.id, name: p.name, rate: p.rate }))}
-                                                value={item.description}
-                                                editable={true}
-                                                onChange={(val) => {
-                                                    handleItemChange(item.id, 'description', val);
-                                                    // If a product was selected (not just typed), it will have an ID in our lookup
-                                                    const product = products.find(p => p.id === val || p.name === val);
-                                                    if (product && product.name === val) {
-                                                        // This helps trigger any linked logic like rate auto-fill
-                                                        // handleItemChange already handled the description
-                                                    }
-                                                }}
-                                                placeholder="Item name (e.g. Roller Blind)"
-                                                renderOption={(opt: Option) => (
-                                                    <div className="flex justify-between items-center w-full">
-                                                        <span className="font-medium text-sm">{opt.name}</span>
-                                                        <span className="text-xs text-zinc-400">₹{opt.rate}</span>
-                                                    </div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Description</label>
+                                                {item.description && (
+                                                    products.some(p => p.name.toLowerCase() === item.description.toLowerCase()) ? (
+                                                        <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold uppercase tracking-tighter">Catalogue</span>
+                                                    ) : (
+                                                        <span className="text-[9px] px-1.5 py-0.5 bg-zinc-100 text-zinc-500 rounded-full font-bold uppercase tracking-tighter">Manual Entry</span>
+                                                    )
                                                 )}
-                                                className="pr-10"
-                                            />
-                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10 pointer-events-auto">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => saveToCatalog(item.description, item.rate, item.id)}
-                                                    className={cn(
-                                                        "p-1 hover:bg-zinc-100 rounded-md transition-colors",
-                                                        savedProducts[item.id] ? "text-green-500" : "text-zinc-400 hover:text-blue-500"
+                                            </div>
+                                            <div className="relative">
+                                                <SearchableSelect
+                                                    options={products.map(p => ({ id: p.id, name: p.name, rate: p.rate }))}
+                                                    value={item.description}
+                                                    editable={true}
+                                                    onChange={(val) => {
+                                                        handleItemChange(item.id, 'description', val);
+                                                    }}
+                                                    placeholder="Item name (e.g. Roller Blind)"
+                                                    renderOption={(opt: Option) => (
+                                                        <div className="flex justify-between items-center w-full">
+                                                            <div className="flex items-center">
+                                                                <Database className="h-3 w-3 mr-2 text-zinc-400" />
+                                                                <span className="font-medium text-sm">{opt.name}</span>
+                                                            </div>
+                                                            <span className="text-xs text-zinc-400">₹{opt.rate}</span>
+                                                        </div>
                                                     )}
-                                                    title="Save to Catalog"
-                                                >
-                                                    {savedProducts[item.id] ? <Check className="h-4 w-4" /> : <Database className="h-4 w-4" />}
-                                                </button>
+                                                    className="pr-10"
+                                                />
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10 pointer-events-auto">
+                                                    {!products.some(p => p.name.toLowerCase() === item.description.toLowerCase()) && item.description && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => saveToCatalog(item.description, item.rate, item.id)}
+                                                            className={cn(
+                                                                "p-1 hover:bg-zinc-100 rounded-md transition-colors",
+                                                                savedProducts[item.id] ? "text-green-500" : "text-zinc-400 hover:text-blue-500"
+                                                            )}
+                                                            title="Save to Catalog"
+                                                        >
+                                                            {savedProducts[item.id] ? <Check className="h-4 w-4" /> : <Database className="h-4 w-4" />}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -358,9 +454,16 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                             ₹{item.amount.toFixed(0)}
                                         </div>
                                     </div>
-                                    <div className="col-span-1 flex justify-center">
-                                        {/* @ts-ignore */}
-                                        <Button variant="ghost" size="sm" className="text-red-500" onClick={() => removeItem(item.id)}>
+                                    <div className="col-span-12 md:col-span-11 mt-1">
+                                        <Input
+                                            placeholder="Details / Specs (Size, Fabric, Options...)"
+                                            value={item.details || ''}
+                                            onChange={(e) => handleItemChange(item.id, 'details', e.target.value)}
+                                            className="h-8 text-[13px] bg-zinc-50/50 border-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="col-span-12 md:col-span-1 flex justify-end">
+                                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => removeItem(item.id)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>
@@ -417,6 +520,15 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                         onChange={(e) => setReceivedAmount(parseFloat(e.target.value) || 0)}
                                     />
                                 </div>
+                                {Math.abs(roundOff) > 0.001 && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-zinc-500 italic">Round Off</span>
+                                        <span className={cn("font-medium", roundOff >= 0 ? "text-green-600" : "text-amber-600")}>
+                                            {roundOff >= 0 ? "+" : ""}
+                                            {roundOff.toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="pt-4 border-t border-zinc-200 flex justify-between items-center">

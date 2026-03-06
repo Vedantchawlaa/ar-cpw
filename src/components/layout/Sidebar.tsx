@@ -67,12 +67,6 @@ export function Sidebar() {
             adminOnly: true,
         },
         {
-            href: "/shop-products",
-            icon: Store,
-            label: "Shop Products",
-            adminOnly: true,
-        },
-        {
             href: "/orders",
             icon: ShoppingBag,
             label: "Web Orders",
@@ -109,9 +103,9 @@ export function Sidebar() {
             adminOnly: true,
         },
         {
-            href: "/ar-viewer",
+            href: "/ar",
             icon: Smartphone,
-            label: "WebAR Viewer",
+            label: "AR",
         },
     ];
 

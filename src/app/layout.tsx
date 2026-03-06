@@ -23,7 +23,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  let session = null;
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error("Auth session fetch failed in layout:", error);
+  }
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <body className={`${inter.className} bg-slate-50`}>

@@ -25,11 +25,16 @@ export function StockClient({ products: initialProducts, lowStockProducts }: Sto
     const [products, setProducts] = useState(initialProducts);
     const [searchQuery, setSearchQuery] = useState("");
     const [editingStock, setEditingStock] = useState<{ [key: string]: number }>({});
+    const [selectedCategory, setSelectedCategory] = useState("All");
 
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const categories = ["All", "Fabric", "Tracks", "Blinds", "Accessories", "Rods"];
+
+    const filteredProducts = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.category.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
 
     const handleStockChange = (productId: string, value: string) => {
         const quantity = parseInt(value) || 0;
@@ -109,6 +114,22 @@ export function StockClient({ products: initialProducts, lowStockProducts }: Sto
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
                 />
+            </div>
+
+            {/* Category Tabs */}
+            <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                    <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all shadow-sm ${selectedCategory === cat
+                            ? "bg-slate-900 text-white"
+                            : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-200"
+                            }`}
+                    >
+                        {cat}
+                    </button>
+                ))}
             </div>
 
             {/* Stock Table */}

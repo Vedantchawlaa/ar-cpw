@@ -99,13 +99,6 @@ export function UIOverlay({
                     {!state.isSessionActive && !state.isSimulationMode && (
                         <div className="flex flex-col gap-2">
                             <button
-                                onClick={onStartAR}
-                                className="px-6 py-3 bg-indigo-600 text-white text-[12px] font-black uppercase rounded-full shadow-2xl animate-pulse pointer-events-auto flex items-center gap-2 border-2 border-white/20 hover:scale-105 transition-transform"
-                            >
-                                <Sparkles className="h-4 w-4" />
-                                Start WebAR
-                            </button>
-                            <button
                                 onClick={onStartSimulation}
                                 className="px-6 py-3 bg-slate-800 text-white text-[12px] font-black uppercase rounded-full shadow-2xl pointer-events-auto flex items-center gap-2 border-2 border-white/10 hover:bg-slate-700 transition-colors"
                             >
@@ -281,20 +274,13 @@ export function UIOverlay({
                             Upload your own cloth photos to see them instantly on 3D curtains and blinds.
                         </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                        <button
-                            onClick={onStartAR}
-                            className="py-4 bg-white text-slate-900 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-indigo-50"
-                        >
-                            <Sparkles className="h-4 w-4 mx-auto mb-1 text-indigo-600" />
-                            Start AR
-                        </button>
+                    <div className="grid grid-cols-1 gap-3 pt-2">
                         <button
                             onClick={onStartSimulation}
-                            className="py-4 bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-slate-700"
+                            className="py-4 bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-slate-700 w-full"
                         >
                             <Monitor className="h-4 w-4 mx-auto mb-1 text-indigo-400" />
-                            Simulate
+                            Launch Simulator
                         </button>
                     </div>
                 </div>

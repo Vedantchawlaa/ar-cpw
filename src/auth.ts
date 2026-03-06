@@ -49,17 +49,23 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
                     const user = await getUser(email);
                     if (!user) {
                         await logAuthServer(`User NOT found: ${email}`);
+                        console.log("Authorize: User not found");
                         return null;
                     }
 
                     await logAuthServer(`User found: ${email}, role: ${user.role}`);
+                    console.log("Authorize: User found, comparing passwords...");
                     const passwordsMatch = await bcrypt.compare(password, user.password);
                     await logAuthServer(`Password match result for ${email}: ${passwordsMatch}`);
 
                     if (passwordsMatch) {
                         await logAuthServer(`SUCCESS: Returning user object for ${email}`);
+                        console.log("Authorize: Login successful");
                         return user;
                     }
+                    console.log("Authorize: Password mismatch");
+                } else {
+                    console.log("Authorize: Invalid input fields", (parsedCredentials as any).error?.format());
                 }
 
                 await logAuthServer(`FAILURE: Auth failed for ${credentials?.email}`);

@@ -3,6 +3,7 @@
 import { QuotationWithRelations } from "@/lib/types/quotation";
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
+import { formatDate } from "@/lib/utils";
 // @ts-ignore
 import { Printer, Share2, Pencil, Check, X, Edit, Download, MessageSquare, Bell } from "lucide-react";
 import Link from "next/link";
@@ -12,10 +13,11 @@ import { updateQuotation } from "@/lib/actions/quotation-actions";
 
 interface QuotationPrintProps {
     quotation: QuotationWithRelations;
+    layoutMode?: 'standard' | 'compact';
 }
 
-export default function QuotationPrint({ quotation }: QuotationPrintProps) {
-    const [layoutMode, setLayoutMode] = useState<'standard' | 'compact'>('standard');
+export default function QuotationPrint({ quotation, layoutMode: initialLayout = 'standard' }: QuotationPrintProps) {
+    const [layoutMode, setLayoutMode] = useState<'standard' | 'compact'>(initialLayout);
 
     // Payment State
     const [receivedAmount, setReceivedAmount] = useState(
@@ -127,7 +129,7 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
 
             let message = "";
             if (type === 'share') {
-                message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${quotation.total.toLocaleString()}. - CHAWLA PARDE WALA`;
+                message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${displayTotal.toLocaleString()}. - CHAWLA PARDE WALA`;
             } else {
                 message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${balanceDue.toLocaleString()} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
             }
@@ -135,7 +137,19 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
             const element = document.getElementById('quotation-content');
             if (!element) throw new Error("Content not found");
 
+            // For WhatsApp/Reminders, we always want compact PDF
+            const previousLayout = layoutMode;
+            if (previousLayout !== 'compact') {
+                setLayoutMode('compact');
+                // Small delay to allow re-render
+                await new Promise(r => setTimeout(r, 100));
+            }
+
             await generatePDFWithWatermark(element, `Estimate_${quotation.number}.pdf`, true);
+
+            if (previousLayout !== 'compact') {
+                setLayoutMode(previousLayout);
+            }
 
             const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
@@ -146,7 +160,7 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
 
             let message = "";
             if (type === 'share') {
-                message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${quotation.total.toLocaleString()}. - CHAWLA PARDE WALA`;
+                message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${displayTotal.toLocaleString()}. - CHAWLA PARDE WALA`;
             } else {
                 message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${balanceDue.toLocaleString()} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
             }
@@ -163,7 +177,10 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
         await generatePDFWithWatermark(element, `Estimate_${quotation.number}.pdf`, true);
     };
 
-    const balanceDue = Math.max(0, quotation.total - receivedAmount);
+    const baseTotal = quotation.subtotal + quotation.tax - quotation.discount;
+    const displayTotal = Math.round(baseTotal);
+    const roundOff = displayTotal - baseTotal;
+    const balanceDue = Math.max(0, displayTotal - receivedAmount);
     const hasTax = quotation.tax > 0;
     const hasDiscount = quotation.discount > 0;
 
@@ -251,13 +268,9 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                 <div className={`relative z-10 flex justify-between items-start ${layoutMode === 'compact' ? 'mb-4' : 'mb-6'} break-inside-avoid transition-all`}>
                     {/* Left Side: Bill To */}
                     <div className={`${layoutMode === 'compact' ? 'mt-4' : 'mt-20'} uppercase tracking-wide space-y-2`}>
-                        <div className={`text-zinc-400 font-bold tracking-tighter ${layoutMode === 'compact' ? 'text-sm' : 'text-xl'}`}>Bill To</div>
+                        <div className={`text-zinc-400 font-bold tracking-tighter ${layoutMode === 'compact' ? 'text-sm' : 'text-xl'}`}>To</div>
                         <div className={`font-black text-zinc-900 tracking-tight ${layoutMode === 'compact' ? 'text-xl' : 'text-3xl'}`}>{quotation.lead.name}</div>
-                        <div className="text-zinc-600 font-bold italic font-mono text-xs">Date: {new Date().toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        })}</div>
+                        <div className="text-zinc-600 font-bold italic font-mono text-xs">Date: {formatDate(new Date())}</div>
                     </div>
 
                     {/* Right Side: Logo & Estimate info */}
@@ -308,15 +321,62 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                     </table>
                 </div>
 
+                {/* QUOTATION DESCRIPTION & SERVICES */}
+                {(quotation.description || (quotation.services && Array.isArray(quotation.services) && quotation.services.some((s: any) => s.enabled))) && (
+                    <div className="relative z-10 mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 break-inside-avoid">
+                        {quotation.description && (
+                            <div className="p-4 bg-zinc-50/50 border-l-4 border-zinc-200 rounded-r-lg">
+                                <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Notes & Description</div>
+                                <div className="text-zinc-700 whitespace-pre-wrap leading-relaxed italic">{quotation.description}</div>
+                            </div>
+                        )}
+                        {quotation.services && Array.isArray(quotation.services) && quotation.services.some((s: any) => s.enabled) && (
+                            <div className="p-4 bg-blue-50/30 border-l-4 border-blue-200 rounded-r-lg">
+                                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1.5">Additional Services</div>
+                                <div className="grid grid-cols-1 gap-1.5">
+                                    {quotation.services.filter((s: any) => s.enabled && s.label).map((s: any, idx: number) => (
+                                        <div key={idx} className="flex items-center justify-between text-zinc-700 text-xs font-bold uppercase tracking-tight">
+                                            <div className="flex items-center">
+                                                <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                                                    <Check className="w-2.5 h-2.5 text-green-600" />
+                                                </div>
+                                                {s.label}
+                                            </div>
+                                            {s.rate !== undefined && s.rate !== null && s.rate !== "" && (
+                                                <span>
+                                                    {typeof s.rate === 'number' || !isNaN(Number(s.rate))
+                                                        ? `₹${Number(s.rate).toLocaleString()}`
+                                                        : s.rate}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* SUMMARY ROW with Left-Aligned QR */}
                 <div className="relative z-10 flex justify-between items-end gap-8 mb-4 break-inside-avoid">
                     {/* Enlarged QR Code on the Left */}
                     <div className="flex flex-col items-start gap-2">
-                        <div className="h-48 w-48 bg-white p-2 border-2 border-zinc-100 rounded-xl shadow-sm">
+                        <div className="h-48 w-48 bg-white p-2 border-2 border-zinc-100 rounded-xl shadow-sm overflow-hidden flex items-center justify-center">
                             <img
-                                src="/QR.png"
+                                src="/qr.png"
                                 alt="Payment QR"
                                 className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    console.error("QR Code failed to load");
+                                    e.currentTarget.style.display = 'none';
+                                    const parent = e.currentTarget.parentElement;
+                                    if (parent) {
+                                        const errorMsg = document.createElement('div');
+                                        errorMsg.className = 'text-[10px] text-zinc-400 font-bold text-center p-4';
+                                        errorMsg.innerText = 'PAYMENT QR NOT FOUND\nPLEASE CHECK /public/qr.png';
+                                        parent.appendChild(errorMsg);
+                                    }
+                                }}
                             />
                         </div>
                     </div>
@@ -342,9 +402,16 @@ export default function QuotationPrint({ quotation }: QuotationPrintProps) {
                             </div>
                         )}
 
+                        {Math.abs(roundOff) > 0.001 && (
+                            <div className="flex justify-between text-zinc-400 font-semibold text-[10px] uppercase tracking-wider italic">
+                                <span>Round Off</span>
+                                <span>{roundOff >= 0 ? "+" : ""}₹{roundOff.toFixed(2)}</span>
+                            </div>
+                        )}
+
                         <div className={`flex justify-between border-t-2 border-zinc-900 ${layoutMode === 'compact' ? 'pt-3 text-lg' : 'pt-4 text-xl'} font-bold text-zinc-900`}>
                             <span className="uppercase tracking-[0.15em]">Grand Total</span>
-                            <span>₹{quotation.total.toLocaleString()}</span>
+                            <span>₹{displayTotal.toLocaleString()}</span>
                         </div>
 
                         <div className="flex justify-between items-center text-zinc-500 font-bold text-[11px] uppercase tracking-wider group">

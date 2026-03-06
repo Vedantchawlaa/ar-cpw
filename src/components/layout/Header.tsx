@@ -4,19 +4,28 @@ import { Input } from "@/components/ui/Input";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/Button";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { MobileNav } from "@/components/layout/MobileNav";
+import { getReminderCount } from "@/lib/actions/reminder-actions";
 
 export async function Header() {
     const session = await auth();
+    const reminderCount = await getReminderCount();
+    const role = (session?.user as any)?.role;
 
     return (
-        <header className="flex h-16 items-center gap-4 border-b bg-white px-6 w-full lg:h-[64px]">
+        <header className="flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6 w-full lg:h-[64px] sticky top-0 z-30">
+            <MobileNav
+                role={role}
+                userName={session?.user?.name || undefined}
+                reminderCount={reminderCount}
+            />
             <div className="w-full flex-1">
                 <form>
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                             type="search"
-                            placeholder="Search leads, orders..."
+                            placeholder="Search..."
                             className="w-full appearance-none bg-slate-50 pl-9 shadow-none md:w-2/3 lg:w-1/3"
                         />
                     </div>

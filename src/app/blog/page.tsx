@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 // @ts-ignore
 import { ArrowRight, Sparkles, Clock, User, Tag, ChevronRight, Instagram, MapPin, Smartphone } from "lucide-react";
+import { PublicHeader } from "@/components/layout/PublicHeader";
 
 const POSTS = [
     {
@@ -52,26 +53,7 @@ export default function BlogPage() {
 
     return (
         <div className="min-h-screen bg-white flex flex-col font-sans">
-            {/* Elegant Blog Header */}
-            <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md">
-                <div className="container flex h-16 max-w-screen-2xl items-center px-4 md:px-6">
-                    <Link className="flex items-center gap-3 group" href="/">
-                        <img src="/logo.png" alt="Chawla Parde Wala Logo" className="h-10 w-auto transition-transform group-hover:scale-105" />
-                        <div className="flex flex-col text-left">
-                            <span className="font-bold text-sm tracking-tight leading-none text-slate-900 uppercase">CHAWLA</span>
-                            <span className="text-[10px] font-medium text-slate-500 tracking-[0.2em] uppercase">PARDE WALA</span>
-                        </div>
-                    </Link>
-                    <nav className="hidden md:flex ml-auto gap-8 items-center">
-                        <Link className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest" href="/shop">Shop</Link>
-                        <Link className="text-sm font-bold text-slate-900 transition-colors uppercase tracking-widest border-b-2 border-indigo-600" href="/blog">Blog</Link>
-                        <Link className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest" href="/login">Sign In</Link>
-                        <Link href="/shop">
-                            <Button size="sm" className="rounded-full px-6 font-bold shadow-lg shadow-indigo-100 bg-indigo-600">Explore Collection</Button>
-                        </Link>
-                    </nav>
-                </div>
-            </header>
+            <PublicHeader />
 
             <main className="flex-1">
                 {/* Blog Intro */}

@@ -10,6 +10,8 @@ import { Quotation, QuotationItem } from "@prisma/client";
 export type QuotationWithRelations = Quotation & {
     items: QuotationItem[];
     lead: { name: string; city: string; phone: string };
+    description?: string | null;
+    services?: any;
 };
 
 export async function getQuotations() {
@@ -95,15 +97,18 @@ export async function getActiveOrders() {
 export async function createQuotation(data: {
     number?: string;
     leadId: string;
-    items: { description: string; quantity: number; rate: number; amount: number }[];
+    items: { description: string; details?: string; quantity: number; rate: number; amount: number }[];
     subtotal: number;
     tax?: number;
     discount?: number;
     total: number;
+    description?: string;
+    services?: any;
+    deadline?: Date | string | null;
 }) {
     try {
         const session = await auth();
-        console.log("Session in createQuotation:", JSON.stringify(session, null, 2));
+        if (session) console.log("User creating quotation:", session.user?.email);
         if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
         let number = data.number;
@@ -129,9 +134,13 @@ export async function createQuotation(data: {
                     tax: data.tax || 0,
                     discount: data.discount || 0,
                     total: data.total,
+                    description: data.description,
+                    services: data.services,
+                    deadline: (data.deadline && !isNaN(new Date(data.deadline).getTime())) ? new Date(data.deadline) : null,
                     items: {
                         create: data.items.map(item => ({
                             description: item.description,
+                            details: item.details,
                             quantity: item.quantity,
                             rate: item.rate,
                             amount: item.amount,
@@ -152,14 +161,14 @@ export async function createQuotation(data: {
         return { success: true, data: quotation as any };
     } catch (error) {
         console.error("Failed to create quotation:", error);
-        return { success: false, error: "Failed to create quotation" };
+        return { success: false, error: error instanceof Error ? error.message : "Failed to create quotation" };
     }
 }
 
 export async function updateQuotation(id: string, data: {
     number?: string;
     leadId: string;
-    items: { description: string; quantity: number; rate: number; amount: number }[];
+    items: { description: string; details?: string; quantity: number; rate: number; amount: number }[];
     subtotal: number;
     tax?: number;
     discount?: number;
@@ -167,6 +176,8 @@ export async function updateQuotation(id: string, data: {
     receivedAmount?: number;
     status?: string;
     deadline?: Date | string | null;
+    description?: string;
+    services?: any;
 }) {
     try {
         const session = await auth();
@@ -195,27 +206,44 @@ export async function updateQuotation(id: string, data: {
                 where: { quotationId: id }
             });
 
+            const updateData: any = {
+                subtotal: data.subtotal,
+                tax: data.tax || 0,
+                discount: data.discount || 0,
+                total: data.total,
+                receivedAmount: data.receivedAmount || 0,
+                status: data.status,
+                description: data.description,
+                services: data.services,
+                items: {
+                    create: data.items.map(item => ({
+                        description: item.description,
+                        details: item.details,
+                        quantity: item.quantity,
+                        rate: item.rate,
+                        amount: item.amount,
+                    })),
+                },
+            };
+
+            if (data.number && data.number.trim() !== "") {
+                updateData.number = data.number;
+            }
+
+            if (data.deadline) {
+                const date = new Date(data.deadline);
+                if (!isNaN(date.getTime())) {
+                    updateData.deadline = date;
+                } else {
+                    updateData.deadline = null;
+                }
+            } else {
+                updateData.deadline = null;
+            }
+
             const updated = await (tx as any).quotation.update({
                 where: { id },
-                data: {
-                    number: data.number, // Update number if provided
-                    // leadId: data.leadId, // Removing leadId update to avoid Prisma error
-                    subtotal: data.subtotal,
-                    tax: data.tax || 0,
-                    discount: data.discount || 0,
-                    total: data.total,
-                    receivedAmount: data.receivedAmount || 0,
-                    status: data.status,
-                    deadline: data.deadline ? new Date(data.deadline) : null,
-                    items: {
-                        create: data.items.map(item => ({
-                            description: item.description,
-                            quantity: item.quantity,
-                            rate: item.rate,
-                            amount: item.amount,
-                        })),
-                    },
-                },
+                data: updateData,
                 include: {
                     lead: { select: { name: true, city: true, phone: true } },
                     items: true,
@@ -230,9 +258,9 @@ export async function updateQuotation(id: string, data: {
         revalidatePath("/quotations");
         revalidatePath(`/quotations/${id}`);
         return { success: true, data: quotation as any };
-    } catch (error) {
-        console.error("Failed to update quotation:", error);
-        return { success: false, error: "Failed to update quotation" };
+    } catch (error: any) {
+        console.error("❌ Failed to update quotation:", error);
+        return { success: false, error: "Failed to update quotation: " + (error.message || "Unknown error") };
     }
 }
 

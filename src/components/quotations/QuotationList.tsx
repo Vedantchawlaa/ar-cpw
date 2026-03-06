@@ -9,6 +9,7 @@ import { Plus, Printer, Trash2, MessageSquare, Bell } from "lucide-react";
 import Link from "next/link";
 import { deleteQuotation } from "@/lib/actions/quotation-actions";
 import QuotationPrint from "./QuotationPrint";
+import { formatDate } from "@/lib/utils";
 
 interface QuotationListProps {
     initialQuotations: QuotationWithRelations[];
@@ -39,10 +40,11 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
                 if (phone.length === 10) phone = '91' + phone;
 
                 let message = "";
-                const balanceDue = Math.max(0, quotation.total - (quotation.receivedAmount || 0));
+                const roundedTotal = Math.round(quotation.subtotal + (quotation.tax || 0) - (quotation.discount || 0));
+                const balanceDue = Math.max(0, roundedTotal - (quotation.receivedAmount || 0));
 
                 if (type === 'share') {
-                    message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${quotation.total.toLocaleString()}. - CHAWLA PARDE WALA`;
+                    message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${roundedTotal.toLocaleString()}. - CHAWLA PARDE WALA`;
                 } else {
                     message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${balanceDue.toLocaleString()} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
                 }
@@ -137,12 +139,14 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
                                 initialQuotations.map((quotation) => (
                                     <tr key={quotation.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                                         <td className="px-4 py-3 font-medium">{quotation.number}</td>
-                                        <td className="px-4 py-3 text-zinc-500">{new Date(quotation.date).toLocaleDateString()}</td>
+                                        <td className="px-4 py-3 text-zinc-500">{formatDate(quotation.date)}</td>
                                         <td className="px-4 py-3">
                                             <div className="font-medium text-zinc-900 dark:text-zinc-100">{quotation.lead.name}</div>
                                             <div className="text-xs text-zinc-500">{quotation.lead.city}</div>
                                         </td>
-                                        <td className="px-4 py-3 font-medium">₹{quotation.total.toLocaleString()}</td>
+                                        <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
+                                            ₹{Math.round(quotation.subtotal + (quotation.tax || 0) - (quotation.discount || 0)).toLocaleString()}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${quotation.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
                                                 quotation.status === 'SENT' ? 'bg-blue-100 text-blue-800' :
@@ -195,7 +199,7 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
             >
                 {sharingQuotation && (
                     <div id={`quotation-share-${sharingQuotation.id}`}>
-                        <QuotationPrint quotation={sharingQuotation} />
+                        <QuotationPrint quotation={sharingQuotation} layoutMode="compact" />
                     </div>
                 )}
             </div>

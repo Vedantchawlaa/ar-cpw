@@ -15,13 +15,18 @@ const ReviewSchema = z.object({
 
 export async function getProducts() {
     try {
+        console.log("getProducts action called");
         const products = await (prisma as any).product.findMany({
             orderBy: { name: 'asc' }
         });
+        console.log(`getProducts: Found ${products.length} products`);
+        if (products.length > 0) {
+            console.log(`getProducts: First product is ${products[0].name}`);
+        }
         return { success: true, data: products as Product[] };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to fetch products:", error);
-        return { success: false, error: "Failed to fetch products" };
+        return { success: false, error: "Failed to fetch products: " + error.message };
     }
 }
 
