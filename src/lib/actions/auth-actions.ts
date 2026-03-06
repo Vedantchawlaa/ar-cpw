@@ -6,6 +6,14 @@ import db from "@/lib/db";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { appendFile } from "fs/promises";
+import path from "path";
+
+async function logAuth(message: string) {
+    const logPath = path.join(process.cwd(), "auth_debug.log");
+    const timestamp = new Date().toISOString();
+    await appendFile(logPath, `[${timestamp}] ${message}\n`);
+}
 
 const RegisterSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -18,17 +26,31 @@ export async function authenticate(
     formData: FormData,
 ) {
     try {
-        await signIn("credentials", formData);
-    } catch (error) {
+        const email = formData.get("email");
+        await logAuth(`Attempting sign in for ${email}`);
+
+        // Convert FormData to plain object for NextAuth
+        const credentials = Object.fromEntries(formData);
+
+        await signIn("credentials", credentials);
+        await logAuth("Sign in call finished (no error thrown)");
+    } catch (error: any) {
+        if (error.message === "NEXT_REDIRECT" || error.digest?.startsWith("NEXT_REDIRECT")) {
+            await logAuth("Redirecting (Manual check confirmed)");
+            throw error;
+        }
+
+        await logAuth(`Sign in error: ${error.name} - ${error.message} - ${error.type}`);
         if (error instanceof AuthError) {
+            await logAuth(`AuthError details: type=${error.type} message=${error.message}`);
             switch (error.type) {
                 case "CredentialsSignin":
                     return "Invalid credentials.";
                 default:
-                    return "Something went wrong.";
+                    return `Auth error: ${error.type}`;
             }
         }
-        throw error;
+        return `Error: ${error.message || "Something went wrong."}`;
     }
 }
 

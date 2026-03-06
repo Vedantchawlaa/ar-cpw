@@ -1,0 +1,16 @@
+[2026-03-06T17:22:38.363Z] Attempting sign in for customer@example.com
+[2026-03-06T17:22:38.594Z] Sign in error: CallbackRouteError - Read more at https://errors.authjs.dev#callbackrouteerror
+[2026-03-06T17:23:01.982Z] Attempting sign in for customer@example.com
+[2026-03-06T17:23:02.164Z] Sign in error: CallbackRouteError - Read more at https://errors.authjs.dev#callbackrouteerror
+[2026-03-06T17:23:45.827Z] Attempting sign in for customer@example.com
+[2026-03-06T17:23:46.035Z] Sign in error: CallbackRouteError - Read more at https://errors.authjs.dev#callbackrouteerror
+[2026-03-06T17:26:19.942Z] Attempting sign in for customer@example.com
+[2026-03-06T17:26:20.163Z] Sign in error: CallbackRouteError - Read more at https://errors.authjs.dev#callbackrouteerror - CallbackRouteError
+[2026-03-06T17:26:20.166Z] AuthError details: type=CallbackRouteError message=Read more at https://errors.authjs.dev#callbackrouteerror
+[2026-03-06T17:27:19.738Z] Attempting sign in for customer@example.com
+[2026-03-06T17:27:19.976Z] Sign in error: CallbackRouteError - Read more at https://errors.authjs.dev#callbackrouteerror - CallbackRouteError
+[2026-03-06T17:27:19.978Z] AuthError details: type=CallbackRouteError message=Read more at https://errors.authjs.dev#callbackrouteerror
+[2026-03-06T17:27:31.481Z] Attempting sign in for customer@example.com
+[2026-03-06T17:27:31.802Z] Redirecting (Manual check confirmed)
+[2026-03-06T17:33:52.355Z] Attempting sign in for ved@cpw.com
+[2026-03-06T17:33:52.657Z] Redirecting (Manual check confirmed)

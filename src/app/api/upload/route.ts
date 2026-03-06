@@ -18,11 +18,14 @@ export async function POST(request: NextRequest) {
         const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
 
         // Ensure directory exists
-        const uploadDir = path.join(process.cwd(), "public/uploads");
+        const uploadDir = path.join(process.cwd(), "public", "uploads");
         try {
             await mkdir(uploadDir, { recursive: true });
-        } catch (e) {
-            // Ignore error if directory exists
+        } catch (e: any) {
+            if (e.code !== 'EEXIST') {
+                console.error("Error creating upload directory:", e);
+                throw e;
+            }
         }
 
         const filepath = path.join(uploadDir, filename);
@@ -30,8 +33,12 @@ export async function POST(request: NextRequest) {
         await writeFile(filepath, buffer);
 
         return NextResponse.json({ success: true, url: `/uploads/${filename}` });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error saving file:", error);
-        return NextResponse.json({ success: false, error: "Failed to save file" }, { status: 500 });
+        return NextResponse.json({
+            success: false,
+            error: "Failed to save file",
+            details: error.message
+        }, { status: 500 });
     }
 }

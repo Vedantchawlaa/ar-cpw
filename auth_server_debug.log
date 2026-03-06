@@ -1,0 +1,35 @@
+[2026-03-06T17:26:19.948Z] Authorize called for: customer@example.com
+[2026-03-06T17:26:19.951Z] Credentials parsed successfully for customer@example.com
+[2026-03-06T17:27:19.757Z] Authorize called for: customer@example.com
+[2026-03-06T17:27:19.760Z] Credentials parsed successfully for customer@example.com
+[2026-03-06T17:27:19.761Z] getUser called for email: customer@example.com
+[2026-03-06T17:27:19.763Z] getUser error for customer@example.com: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$ar$2d$cpw$2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"].user.findUnique()` invocation in
+C:\Users\5o1ve\ar-cpw\.next\dev\server\chunks\ssr\[root-of-the-server]__d05ae355._.js:230:170
+
+  227 async function getUser(email) {
+  228     try {
+  229         await logAuthServer(`getUser called for email: ${email}`);
+→ 230         const user = await __TURBOPACK__imported__module__$5b$project$5d2f$ar$2d$cpw$2f$src$2f$lib$2f$db$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"].user.findUnique(
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "postgresql"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+[2026-03-06T17:27:31.492Z] Authorize called for: customer@example.com
+[2026-03-06T17:27:31.495Z] Credentials parsed successfully for customer@example.com
+[2026-03-06T17:27:31.496Z] getUser called for email: customer@example.com
+[2026-03-06T17:27:31.735Z] DB query finished for customer@example.com. User found? true
+[2026-03-06T17:27:31.736Z] User found: customer@example.com, role: customer
+[2026-03-06T17:27:31.786Z] Password match result for customer@example.com: true
+[2026-03-06T17:27:31.788Z] SUCCESS: Returning user object for customer@example.com
+[2026-03-06T17:33:52.362Z] Authorize called for: ved@cpw.com
+[2026-03-06T17:33:52.365Z] Credentials parsed successfully for ved@cpw.com
+[2026-03-06T17:33:52.366Z] getUser called for email: ved@cpw.com
+[2026-03-06T17:33:52.595Z] DB query finished for ved@cpw.com. User found? true
+[2026-03-06T17:33:52.596Z] User found: ved@cpw.com, role: admin
+[2026-03-06T17:33:52.646Z] Password match result for ved@cpw.com: true
+[2026-03-06T17:33:52.648Z] SUCCESS: Returning user object for ved@cpw.com

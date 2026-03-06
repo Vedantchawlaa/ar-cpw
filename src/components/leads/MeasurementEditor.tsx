@@ -393,7 +393,7 @@ export function MeasurementEditor({
                     return f;
                 }));
             } else {
-                alert("Failed to upload image: " + data.error);
+                alert("Failed to upload image: " + (data.details || data.error));
             }
         } catch (error) {
             console.error("Upload error:", error);
