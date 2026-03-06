@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { useSession } from "next-auth/react";
 // @ts-ignore
 import { ArrowLeft, Trash2, Plus, Minus, ShoppingBag, CheckCircle } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface CartItem {
     productId: string;
@@ -314,7 +315,7 @@ export default function CheckoutPage() {
                                     <div className="flex-1">
                                         <h3 className="font-bold text-slate-900">{product.name}</h3>
                                         <p className="text-sm text-slate-500">{product.category}</p>
-                                        <p className="text-lg font-bold text-slate-900 mt-2">₹{product.rate.toLocaleString()}</p>
+                                        <p className="text-lg font-bold text-slate-900 mt-2">₹{formatCurrency(product.rate)}</p>
                                     </div>
                                     <div className="flex flex-col items-end justify-between">
                                         <button
@@ -354,15 +355,15 @@ export default function CheckoutPage() {
                             <div className="space-y-2">
                                 <div className="flex justify-between text-slate-600">
                                     <span>Subtotal</span>
-                                    <span>₹{subtotal.toLocaleString()}</span>
+                                    <span>₹{formatCurrency(subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between text-slate-600">
                                     <span>GST (18%)</span>
-                                    <span>₹{tax.toLocaleString()}</span>
+                                    <span>₹{formatCurrency(tax)}</span>
                                 </div>
                                 <div className="border-t border-slate-200 pt-2 flex justify-between text-lg font-bold text-slate-900">
                                     <span>Total</span>
-                                    <span>₹{total.toLocaleString()}</span>
+                                    <span>₹{formatCurrency(total)}</span>
                                 </div>
                             </div>
                         </div>
@@ -470,7 +471,7 @@ export default function CheckoutPage() {
                             </div>
 
                             <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 h-12">
-                                {paymentMethod === "razorpay" ? "Proceed to Payment" : "Place Order"} - ₹{total.toLocaleString()}
+                                {paymentMethod === "razorpay" ? "Proceed to Payment" : "Place Order"} - ₹{formatCurrency(total)}
                             </Button>
 
                             <p className="text-xs text-slate-500 text-center">

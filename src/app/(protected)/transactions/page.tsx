@@ -3,14 +3,17 @@ import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { TransactionList } from "@/components/transactions/TransactionList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 // @ts-ignore
-import { TrendingUp, TrendingDown, DollarSign } from "lucide-react";
-import { DashboardFilter } from "@/components/dashboard/DashboardFilter";
+import { TrendingUp, TrendingDown, DollarSign, ListFilter } from "lucide-react";
+import { MonthFilter } from "@/components/transactions/MonthFilter";
+import { formatCurrency } from "@/lib/utils";
 
 export default async function TransactionsPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
     const searchParams = await props.searchParams;
-    const range = (searchParams.range as string) || "all";
+    const range = (searchParams.range as string) || "month";
+    const month = searchParams.month as string;
+    const year = searchParams.year as string;
     const from = searchParams.from as string;
     const to = searchParams.to as string;
 
@@ -18,7 +21,18 @@ export default async function TransactionsPage(props: {
     let dateFilter: any = {};
     const now = new Date();
 
-    if (range !== "all") {
+    if (range === "month") {
+        const selectedMonth = month ? parseInt(month) : now.getMonth();
+        const selectedYear = year ? parseInt(year) : now.getFullYear();
+
+        const startDate = new Date(selectedYear, selectedMonth, 1);
+        const endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+
+        dateFilter = {
+            gte: startDate,
+            lte: endDate,
+        };
+    } else if (range !== "all") {
         let startDate = new Date();
         if (range === "24h") startDate.setHours(now.getHours() - 24);
         else if (range === "48h") startDate.setHours(now.getHours() - 48);
@@ -42,50 +56,60 @@ export default async function TransactionsPage(props: {
     }
 
     const stats = await getPnLStats(dateFilter);
-    const transactions = await getTransactions(20, dateFilter);
+    const transactions = await getTransactions(50, dateFilter);
+
+    // Dynamic Labels based on filter
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const currentViewLabel = range === "month"
+        ? `${monthNames[month ? parseInt(month) : now.getMonth()]} ${year ? year : now.getFullYear()}`
+        : range === "all" ? "All Time" : "Filtered View";
+
+    const subTextLabel = range === "month" ? "This month's performance" : "Performance for selected period";
 
     return (
         <div className="flex flex-col gap-8 p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Financial Overview</h1>
-                    <p className="text-muted-foreground">Track income, expenses, and profit.</p>
+                    <p className="text-muted-foreground flex items-center gap-1">
+                        Viewing <span className="text-slate-900 font-semibold">{currentViewLabel}</span>
+                    </p>
                 </div>
-                <DashboardFilter />
+                <MonthFilter />
             </div>
 
             {/* P&L Cards */}
             <div className="grid gap-4 md:grid-cols-3">
-                <Card>
+                <Card className="border-l-4 border-l-green-500 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+                        <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Income</CardTitle>
                         <TrendingUp className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">₹{stats.income.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground">All time revenue</p>
+                        <div className="text-3xl font-bold text-green-600">₹{formatCurrency(stats.income)}</div>
+                        <p className="text-xs text-muted-foreground mt-1">{subTextLabel}</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-l-4 border-l-red-500 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                        <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Expenses</CardTitle>
                         <TrendingDown className="h-4 w-4 text-red-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-600">₹{stats.expenses.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground">All time spending</p>
+                        <div className="text-3xl font-bold text-red-600">₹{formatCurrency(stats.expenses)}</div>
+                        <p className="text-xs text-muted-foreground mt-1">{subTextLabel}</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-l-4 border-l-blue-500 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
-                        <DollarSign className="h-4 w-4 text-indigo-600" />
+                        <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Net Profit</CardTitle>
+                        <DollarSign className="h-4 w-4 text-blue-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${stats.netProfit >= 0 ? 'text-indigo-600' : 'text-red-500'}`}>
-                            {stats.netProfit >= 0 ? '+' : '-'}₹{Math.abs(stats.netProfit).toLocaleString()}
+                        <div className={`text-3xl font-bold ${stats.netProfit >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                            {stats.netProfit >= 0 ? '+' : '-'}₹{formatCurrency(Math.abs(stats.netProfit))}
                         </div>
-                        <p className="text-xs text-muted-foreground">Income - Expenses</p>
+                        <p className="text-xs text-muted-foreground mt-1">{stats.netProfit >= 0 ? "You're profitable!" : "In loss for this period"}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -93,14 +117,22 @@ export default async function TransactionsPage(props: {
             <div className="grid gap-8 lg:grid-cols-3">
                 {/* Transaction Entry Form */}
                 <div className="lg:col-span-1">
-                    <TransactionForm />
+                    <div className="sticky top-6">
+                        <TransactionForm />
+                    </div>
                 </div>
 
                 {/* Transaction History */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div>
-                        <h2 className="text-lg font-semibold tracking-tight">Recent Transactions</h2>
-                        <p className="text-sm text-muted-foreground">History of your financial activity.</p>
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b">
+                        <div>
+                            <h2 className="text-lg font-bold tracking-tight">Statement</h2>
+                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest">{currentViewLabel}</p>
+                        </div>
+                        <div className="h-8 px-3 rounded-full bg-slate-100 flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                            <ListFilter className="h-3 w-3" />
+                            {transactions.length} ENTRIES
+                        </div>
                     </div>
                     <TransactionList transactions={transactions} />
                 </div>

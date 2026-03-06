@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Activity, CreditCard, DollarSign, Users, ArrowUpRight } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import prisma from "@/lib/db";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -162,7 +163,7 @@ export default async function DashboardPage(props: {
                         <DollarSign className="h-4 w-4 text-emerald-600 group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₹{Math.round(totalRevenue).toLocaleString()}</div>
+                        <div className="text-2xl font-bold">₹{formatCurrency(Math.round(totalRevenue))}</div>
                         <p className="text-xs text-muted-foreground mt-1">
                             {range === "all" ? "Lifetime earnings" : `Revenue for ${range}`}
                         </p>
@@ -254,7 +255,7 @@ export default async function DashboardPage(props: {
                                             <tr key={q.id} className="hover:bg-slate-50/50 transition-colors">
                                                 <td className="px-4 py-3 font-medium text-slate-700">{q.number}</td>
                                                 <td className="px-4 py-3 text-slate-600">{q.lead.name}</td>
-                                                <td className="px-4 py-3 text-right font-bold text-slate-900">₹{Math.round(q.total).toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-slate-900">₹{formatCurrency(Math.round(q.total))}</td>
                                             </tr>
                                         ))
                                     )}

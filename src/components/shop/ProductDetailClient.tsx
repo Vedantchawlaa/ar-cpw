@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { formatCurrency } from "@/lib/utils";
 // @ts-ignore
 import { ShoppingBag, Star, ArrowLeft, ShieldCheck, Truck, RotateCcw, MessageSquare, ChevronRight, Share2, Heart, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -137,10 +138,10 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
                             <div className="flex items-baseline gap-4">
                                 <span className="text-4xl font-black text-slate-900 leading-none">
-                                    ₹{product.rate.toLocaleString()}
+                                    ₹{formatCurrency(product.rate)}
                                 </span>
                                 <span className="text-sm font-bold text-slate-400 line-through">
-                                    ₹{(product.rate * 1.2).toLocaleString()}
+                                    ₹{formatCurrency(product.rate * 1.2)}
                                 </span>
                                 <span className="text-sm font-black text-green-600 bg-green-50 px-3 py-1 rounded-full uppercase tracking-tighter">
                                     20% OFF

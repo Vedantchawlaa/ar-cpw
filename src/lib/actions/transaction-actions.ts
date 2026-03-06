@@ -106,3 +106,56 @@ export async function getPnLStats(dateFilter?: any) {
         return { income: 0, expenses: 0, netProfit: 0 };
     }
 }
+
+export async function updateTransaction(id: string, prevState: any, formData: FormData) {
+    const session = await auth();
+    if (!session?.user || (session.user as any).role !== 'admin') {
+        return "Unauthorized";
+    }
+
+    const validatedFields = TransactionSchema.safeParse({
+        type: formData.get("type"),
+        amount: formData.get("amount"),
+        category: formData.get("category"),
+        description: formData.get("description"),
+        date: formData.get("date"),
+    });
+
+    if (!validatedFields.success) {
+        return "Invalid input";
+    }
+
+    const { type, amount, category, description, date } = validatedFields.data;
+
+    try {
+        await db.transaction.update({
+            where: { id },
+            data: { type, amount, category, description, date },
+        });
+
+        revalidatePath("/transactions");
+        return "success";
+    } catch (error) {
+        console.error("Update failed:", error);
+        return "Failed to update transaction";
+    }
+}
+
+export async function deleteTransaction(id: string) {
+    const session = await auth();
+    if (!session?.user || (session.user as any).role !== 'admin') {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    try {
+        await db.transaction.delete({
+            where: { id },
+        });
+
+        revalidatePath("/transactions");
+        return { success: true };
+    } catch (error) {
+        console.error("Delete failed:", error);
+        return { success: false, error: "Failed to delete" };
+    }
+}

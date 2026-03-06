@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { updateOrderStatus } from "@/lib/actions/order-actions";
 // @ts-ignore
 import { Package, User, Phone, Mail, MapPin, CreditCard, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface OrderItem {
     id: string;
@@ -147,7 +148,7 @@ export function OrdersClient({ orders: initialOrders }: OrdersClientProps) {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-2xl font-black text-slate-900">₹{order.total.toLocaleString()}</div>
+                                            <div className="text-2xl font-black text-slate-900">₹{formatCurrency(order.total)}</div>
                                             <div className="text-xs text-slate-500">{order.items.length} item(s)</div>
                                         </div>
                                     </div>
@@ -223,11 +224,11 @@ export function OrdersClient({ orders: initialOrders }: OrdersClientProps) {
                                                     <div className="flex-1">
                                                         <div className="font-medium text-slate-900">{item.productName}</div>
                                                         <div className="text-sm text-slate-500">
-                                                            ₹{item.productRate.toLocaleString()} × {item.quantity}
+                                                            ₹{formatCurrency(item.productRate)} × {item.quantity}
                                                         </div>
                                                     </div>
                                                     <div className="text-lg font-bold text-slate-900">
-                                                        ₹{item.subtotal.toLocaleString()}
+                                                        ₹{formatCurrency(item.subtotal)}
                                                     </div>
                                                 </div>
                                             ))}
@@ -236,15 +237,15 @@ export function OrdersClient({ orders: initialOrders }: OrdersClientProps) {
                                         <div className="border-t border-slate-200 pt-4 space-y-2">
                                             <div className="flex justify-between text-slate-600">
                                                 <span>Subtotal</span>
-                                                <span>₹{order.subtotal.toLocaleString()}</span>
+                                                <span>₹{formatCurrency(order.subtotal)}</span>
                                             </div>
                                             <div className="flex justify-between text-slate-600">
                                                 <span>GST (18%)</span>
-                                                <span>₹{order.tax.toLocaleString()}</span>
+                                                <span>₹{formatCurrency(order.tax)}</span>
                                             </div>
                                             <div className="flex justify-between text-lg font-bold text-slate-900 pt-2 border-t border-slate-200">
                                                 <span>Total</span>
-                                                <span>₹{order.total.toLocaleString()}</span>
+                                                <span>₹{formatCurrency(order.total)}</span>
                                             </div>
                                         </div>
 

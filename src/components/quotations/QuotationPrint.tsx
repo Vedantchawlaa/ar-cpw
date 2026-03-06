@@ -3,7 +3,7 @@
 import { QuotationWithRelations } from "@/lib/types/quotation";
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 // @ts-ignore
 import { Printer, Share2, Pencil, Check, X, Edit, Download, MessageSquare, Bell } from "lucide-react";
 import Link from "next/link";
@@ -313,8 +313,8 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                                         )}
                                     </td>
                                     <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-center font-medium`}>{item.quantity}</td>
-                                    <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right whitespace-nowrap font-medium`}>₹{item.rate.toLocaleString()}</td>
-                                    <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right font-bold whitespace-nowrap text-zinc-900`}>₹{(item.quantity * item.rate).toLocaleString()}</td>
+                                    <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right whitespace-nowrap font-medium`}>₹{formatCurrency(item.rate)}</td>
+                                    <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right font-bold whitespace-nowrap text-zinc-900`}>₹{formatCurrency(item.quantity * item.rate)}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -345,7 +345,7 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                                             {s.rate !== undefined && s.rate !== null && s.rate !== "" && (
                                                 <span>
                                                     {typeof s.rate === 'number' || !isNaN(Number(s.rate))
-                                                        ? `₹${Number(s.rate).toLocaleString()}`
+                                                        ? `₹${formatCurrency(Number(s.rate))}`
                                                         : s.rate}
                                                 </span>
                                             )}
@@ -385,20 +385,20 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                     <div className={`${layoutMode === 'compact' ? 'w-full md:w-72' : 'w-full md:w-80'} space-y-3`}>
                         <div className="flex justify-between text-zinc-500 font-semibold text-[11px] uppercase tracking-wider">
                             <span>Subtotal</span>
-                            <span className="text-zinc-900">₹{quotation.subtotal.toLocaleString()}</span>
+                            <span className="text-zinc-900">₹{formatCurrency(quotation.subtotal)}</span>
                         </div>
 
                         {hasTax && (
                             <div className="flex justify-between text-zinc-500 font-semibold text-[11px] uppercase tracking-wider">
                                 <span>Tax (GST)</span>
-                                <span className="text-zinc-900">₹{quotation.tax.toLocaleString()}</span>
+                                <span className="text-zinc-900">₹{formatCurrency(quotation.tax)}</span>
                             </div>
                         )}
 
                         {hasDiscount && (
                             <div className="flex justify-between text-green-600 font-semibold text-[11px] uppercase tracking-wider">
                                 <span>Discount</span>
-                                <span>-₹{quotation.discount.toLocaleString()}</span>
+                                <span>-₹{formatCurrency(quotation.discount)}</span>
                             </div>
                         )}
 
@@ -411,7 +411,7 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
 
                         <div className={`flex justify-between border-t-2 border-zinc-900 ${layoutMode === 'compact' ? 'pt-3 text-lg' : 'pt-4 text-xl'} font-bold text-zinc-900`}>
                             <span className="uppercase tracking-[0.15em]">Grand Total</span>
-                            <span>₹{displayTotal.toLocaleString()}</span>
+                            <span>₹{formatCurrency(displayTotal)}</span>
                         </div>
 
                         <div className="flex justify-between items-center text-zinc-500 font-bold text-[11px] uppercase tracking-wider group">
@@ -431,7 +431,7 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                                     </>
                                 ) : (
                                     <>
-                                        <span>₹{receivedAmount.toLocaleString()}</span>
+                                        <span>₹{formatCurrency(receivedAmount)}</span>
                                         <button
                                             onClick={() => setIsEditingReceived(true)}
                                             className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 text-zinc-400 hover:text-zinc-600 print:hidden"
@@ -440,13 +440,13 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                                         </button>
                                     </>
                                 )}
-                                <span className="hidden print:inline ml-1 font-bold">₹{receivedAmount.toLocaleString()}</span>
+                                <span className="hidden print:inline ml-1 font-bold">₹{formatCurrency(receivedAmount)}</span>
                             </div>
                         </div>
 
                         <div className={`flex justify-between border-t border-zinc-200 mt-2 ${layoutMode === 'compact' ? 'pt-3 text-lg' : 'pt-4 text-xl'} font-bold ${balanceDue > 0 ? 'text-red-600' : 'text-green-600'}`}>
                             <span className="uppercase tracking-widest text-xs text-zinc-400 font-bold self-center">Balance Due</span>
-                            <span>₹{balanceDue.toLocaleString()}</span>
+                            <span>₹{formatCurrency(balanceDue)}</span>
                         </div>
                     </div>
                 </div>

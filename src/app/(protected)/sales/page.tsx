@@ -8,7 +8,7 @@ import { getQuotations, markAsSale } from "@/lib/actions/quotation-actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 export default function SalesPage() {
@@ -115,7 +115,7 @@ export default function SalesPage() {
                         <DollarSign className="h-4 w-4 text-emerald-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-emerald-700">₹{totalRevenue.toLocaleString()}</div>
+                        <div className="text-3xl font-bold text-emerald-700">₹{formatCurrency(totalRevenue)}</div>
                         <p className="text-xs text-emerald-600 font-medium mt-1">
                             Only marked as SALE
                         </p>
@@ -127,7 +127,7 @@ export default function SalesPage() {
                         <TrendingUp className="h-4 w-4 text-blue-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-blue-700">₹{avgOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                        <div className="text-3xl font-bold text-blue-700">₹{formatCurrency(avgOrderValue)}</div>
                         <p className="text-xs text-blue-600 font-medium mt-1">Based on {completedSalesCount} sales</p>
                     </CardContent>
                 </Card>
@@ -182,8 +182,8 @@ export default function SalesPage() {
                                                     {item.status}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-medium text-zinc-500">₹{Math.round(item.total).toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right font-bold text-emerald-600">₹{(item.receivedAmount || 0).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-zinc-500">₹{formatCurrency(Math.round(item.total))}</td>
+                                            <td className="px-4 py-3 text-right font-bold text-emerald-600">₹{formatCurrency(item.receivedAmount || 0)}</td>
                                             <td className="px-4 py-3 text-center">
                                                 {item.status !== 'SALE' && (
                                                     <Button variant={"outline" as any} size={"sm" as any} onClick={() => handleMarkAsSale(item.id)}>

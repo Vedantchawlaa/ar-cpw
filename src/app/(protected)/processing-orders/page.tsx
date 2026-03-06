@@ -8,7 +8,7 @@ import { getQuotations, getActiveOrders, markAsSale, updateQuotation, updateOrde
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 export default function ProcessingOrdersPage() {
@@ -182,7 +182,7 @@ export default function ProcessingOrdersPage() {
                                                     <option value="CANCELLED">CANCELLED</option>
                                                 </select>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-bold">₹{Math.round(item.total).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-bold">₹{formatCurrency(Math.round(item.total))}</td>
                                             <td className="px-4 py-3 text-center">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <Button variant="outline" size="sm" onClick={() => router.push(`/quotations/${item.id}`)}>

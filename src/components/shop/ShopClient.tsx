@@ -9,6 +9,7 @@ import { Search, ShoppingBag, Filter, Sparkles, ArrowRight, Star, Instagram, Map
 import { Input } from "@/components/ui/Input";
 import { AddProductModal } from "@/components/shop/AddProductModal";
 import { PublicHeader } from "@/components/layout/PublicHeader";
+import { formatCurrency } from "@/lib/utils";
 
 const CATEGORIES = ["All", "Curtains", "Blinds", "Accessories"];
 
@@ -154,7 +155,7 @@ export function ShopClient({ products }: ShopClientProps) {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center justify-between mt-4">
-                                                    <span className="text-xl font-black text-slate-900">₹{product.rate.toLocaleString()}</span>
+                                                    <span className="text-xl font-black text-slate-900">₹{formatCurrency(product.rate)}</span>
                                                     <span className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 group/link">
                                                         Detail <ArrowRight className="h-3 w-3 transition-transform group-hover/link:translate-x-0.5" />
                                                     </span>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Trash2, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { deleteLead } from "@/lib/actions/lead-actions";
 import { Lead } from "@prisma/client";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatCurrency } from "@/lib/utils";
 
 interface LeadListProps {
     leads: Lead[];
@@ -154,7 +154,7 @@ export function LeadList({ leads, onEdit }: LeadListProps) {
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-right font-medium">
-                                            ₹{Math.round(lead.expectedOrderValue).toLocaleString()}
+                                            ₹{formatCurrency(Math.round(lead.expectedOrderValue))}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             {(lead as any).quotationShared ? (
@@ -250,7 +250,7 @@ export function LeadList({ leads, onEdit }: LeadListProps) {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Estimated Value</p>
-                                        <p className="font-bold text-slate-900">₹{Math.round(lead.expectedOrderValue).toLocaleString()}</p>
+                                        <p className="font-bold text-slate-900">₹{formatCurrency(Math.round(lead.expectedOrderValue))}</p>
                                     </div>
                                     <div>
                                         <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Next Follow-up</p>

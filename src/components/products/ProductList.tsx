@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Search, Plus, Pencil, Trash2, Save, X } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export default function ProductList() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -252,7 +252,7 @@ export default function ProductList() {
                                                         {product.category || "Uncategorized"}
                                                     </span>
                                                 </div>
-                                                <div className="col-span-2 text-right pr-4 text-sm font-semibold text-zinc-700">₹{product.rate.toLocaleString()}</div>
+                                                <div className="col-span-2 text-right pr-4 text-sm font-semibold text-zinc-700">₹{formatCurrency(product.rate)}</div>
                                                 <div className="col-span-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     {/* @ts-ignore */}
                                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600" onClick={() => handleEdit(product)}>

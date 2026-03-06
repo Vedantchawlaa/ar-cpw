@@ -12,3 +12,10 @@ export function formatDate(date: Date | string | number) {
     year: "numeric",
   });
 }
+
+export function formatCurrency(amount: number) {
+  return amount.toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}

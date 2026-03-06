@@ -9,7 +9,7 @@ import { Plus, Printer, Trash2, MessageSquare, Bell } from "lucide-react";
 import Link from "next/link";
 import { deleteQuotation } from "@/lib/actions/quotation-actions";
 import QuotationPrint from "./QuotationPrint";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 
 interface QuotationListProps {
     initialQuotations: QuotationWithRelations[];
@@ -44,9 +44,9 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
                 const balanceDue = Math.max(0, roundedTotal - (quotation.receivedAmount || 0));
 
                 if (type === 'share') {
-                    message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${roundedTotal.toLocaleString()}. - CHAWLA PARDE WALA`;
+                    message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${formatCurrency(roundedTotal)}. - CHAWLA PARDE WALA`;
                 } else {
-                    message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${balanceDue.toLocaleString()} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
+                    message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${formatCurrency(balanceDue)} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
                 }
 
                 const element = document.getElementById(`quotation-share-${quotation.id}`);
@@ -80,9 +80,9 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
                 const balanceDue = Math.max(0, quotation.total - (quotation.receivedAmount || 0));
 
                 if (type === 'share') {
-                    message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${quotation.total.toLocaleString()}. - CHAWLA PARDE WALA`;
+                    message = `Hi ${quotation.lead.name}, here is your quotation #${quotation.number} for ₹${formatCurrency(quotation.total)}. - CHAWLA PARDE WALA`;
                 } else {
-                    message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${balanceDue.toLocaleString()} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
+                    message = `Hi ${quotation.lead.name}, just a gentle reminder regarding the pending balance of ₹${formatCurrency(balanceDue)} for your quotation #${quotation.number}. Hope you're doing well! - CHAWLA PARDE WALA`;
                 }
 
                 window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
@@ -145,7 +145,7 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
                                             <div className="text-xs text-zinc-500">{quotation.lead.city}</div>
                                         </td>
                                         <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
-                                            ₹{Math.round(quotation.subtotal + (quotation.tax || 0) - (quotation.discount || 0)).toLocaleString()}
+                                            ₹{formatCurrency(Math.round(quotation.subtotal + (quotation.tax || 0) - (quotation.discount || 0)))}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${quotation.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
