@@ -132,11 +132,13 @@ function EditModal({ transaction, onClose, expenseCategories, incomeCategories }
         }
     }, [transaction]);
 
-    if (!transaction) return null;
+    React.useEffect(() => {
+        if (state === "success") {
+            onClose();
+        }
+    }, [state, onClose]);
 
-    if (state === "success") {
-        onClose();
-    }
+    if (!transaction) return null;
 
     return (
         <Dialog open={!!transaction} onOpenChange={onClose}>

@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 // @ts-ignore
 import { TrendingUp, TrendingDown, DollarSign, ListFilter } from "lucide-react";
 import { MonthFilter } from "@/components/transactions/MonthFilter";
+import { ExpensePieChart } from "@/components/transactions/ExpensePieChart";
 import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 
 export default async function TransactionsPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -56,7 +58,21 @@ export default async function TransactionsPage(props: {
     }
 
     const stats = await getPnLStats(dateFilter);
-    const transactions = await getTransactions(50, dateFilter);
+    const allTransactions = await getTransactions(500, dateFilter);
+    const displayTransactions = allTransactions.slice(0, 6);
+
+    // Aggregate expenses for the pie chart using all period transactions
+    const expenseDataMap: Record<string, number> = {};
+    allTransactions.forEach((t: any) => {
+        if (t.type === 'EXPENSE') {
+            expenseDataMap[t.category] = (expenseDataMap[t.category] || 0) + Number(t.amount);
+        }
+    });
+
+    const expenseData = Object.entries(expenseDataMap).map(([category, amount]) => ({
+        category,
+        amount
+    }));
 
     // Dynamic Labels based on filter
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -79,7 +95,7 @@ export default async function TransactionsPage(props: {
             </div>
 
             {/* P&L Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card className="border-l-4 border-l-green-500 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Income</CardTitle>
@@ -112,13 +128,26 @@ export default async function TransactionsPage(props: {
                         <p className="text-xs text-muted-foreground mt-1">{stats.netProfit >= 0 ? "You're profitable!" : "In loss for this period"}</p>
                     </CardContent>
                 </Card>
+                <Card className="border-l-4 border-l-purple-500 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Predicted Salary (50%)</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-purple-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold text-purple-600">
+                            ₹{formatCurrency(Math.max(0, stats.netProfit / 2))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Based on profit for this period</p>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="grid gap-8 lg:grid-cols-3">
-                {/* Transaction Entry Form */}
-                <div className="lg:col-span-1">
-                    <div className="sticky top-6">
+                {/* Transaction Entry Form & Chart */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="sticky top-6 space-y-6">
                         <TransactionForm />
+                        <ExpensePieChart data={expenseData} />
                     </div>
                 </div>
 
@@ -131,10 +160,19 @@ export default async function TransactionsPage(props: {
                         </div>
                         <div className="h-8 px-3 rounded-full bg-slate-100 flex items-center gap-2 text-[10px] font-bold text-slate-500">
                             <ListFilter className="h-3 w-3" />
-                            {transactions.length} ENTRIES
+                            SHOWING LATEST {displayTransactions.length}
                         </div>
                     </div>
-                    <TransactionList transactions={transactions} />
+                    <TransactionList transactions={displayTransactions} />
+
+                    <div className="pt-4 flex justify-center">
+                        <Link
+                            href={`/transactions/statement?${new URLSearchParams(Object.fromEntries(Object.entries(searchParams).map(([k, v]) => [k, String(v)]))).toString()}`}
+                            className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors py-2 px-4 rounded-full bg-blue-50 hover:bg-blue-100"
+                        >
+                            View More Statement
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
