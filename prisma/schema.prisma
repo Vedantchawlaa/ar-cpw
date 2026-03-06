@@ -175,3 +175,11 @@ model Measurement {
   updatedAt    DateTime @updatedAt
   lead         Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
+
+model Attachment {
+  id        String   @id @default(uuid())
+  filename  String
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+}

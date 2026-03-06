@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import { writeFile, mkdir } from "fs/promises";
+import db from "@/lib/db";
 
 export async function POST(request: NextRequest) {
     try {
@@ -14,27 +13,22 @@ export async function POST(request: NextRequest) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Sanitize filename
-        const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+        // Save to database instead of filesystem
+        const attachment = await db.attachment.create({
+            data: {
+                filename: file.name,
+                mimeType: file.type || "application/octet-stream",
+                data: buffer,
+            },
+        });
 
-        // Ensure directory exists
-        const uploadDir = path.join(process.cwd(), "public", "uploads");
-        try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (e: any) {
-            if (e.code !== 'EEXIST') {
-                console.error("Error creating upload directory:", e);
-                throw e;
-            }
-        }
-
-        const filepath = path.join(uploadDir, filename);
-
-        await writeFile(filepath, buffer);
-
-        return NextResponse.json({ success: true, url: `/uploads/${filename}` });
+        // Return URL to the serving API
+        return NextResponse.json({
+            success: true,
+            url: `/api/files/${attachment.id}`
+        });
     } catch (error: any) {
-        console.error("Error saving file:", error);
+        console.error("Error saving file to database:", error);
         return NextResponse.json({
             success: false,
             error: "Failed to save file",
