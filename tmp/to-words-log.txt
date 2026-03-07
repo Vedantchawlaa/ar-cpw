@@ -1,0 +1,8 @@
+Input: 123 (number) -> Result: "one hundred twenty-three"
+Input: 123.45 (number) -> Result: "one hundred twenty-three"
+Input: 0 (number) -> Result: "zero"
+Input: -10 (number) -> Result: "minus ten"
+Input: NaN (number) -> FAILED: Not a finite number: NaN (number)
+Input: Infinity (number) -> FAILED: Not a finite number: Infinity (number)
+Input: undefined (undefined) -> FAILED: Not a finite number: undefined (undefined)
+Input: null (object) -> FAILED: Not a finite number: null (object)

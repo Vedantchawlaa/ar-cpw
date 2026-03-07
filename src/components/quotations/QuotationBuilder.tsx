@@ -121,10 +121,14 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     }, [initialData]);
 
     // Calculations
-    const subtotal = items.reduce((sum: number, item: LineItem) => sum + item.amount, 0);
-    const taxAmount = (subtotal * taxRate) / 100;
-    const baseTotal = subtotal + taxAmount - discount;
-    const total = Math.round(baseTotal);
+    const subtotal = items.reduce((sum: number, item: LineItem) => sum + item.amount, 0) || 0;
+    const safeTaxRate = taxRate || 0;
+    const safeDiscount = discount || 0;
+    const safeReceivedAmount = receivedAmount || 0;
+
+    const taxAmount = (subtotal * safeTaxRate) / 100 || 0;
+    const baseTotal = subtotal + taxAmount - safeDiscount;
+    const total = Math.round(baseTotal) || 0;
     const roundOff = total - baseTotal;
 
     const handleItemChange = (id: string, field: keyof LineItem, value: any) => {
@@ -195,13 +199,16 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                 number: quotationNumber || undefined,
                 leadId: selectedLeadId,
                 items: items.map(({ description, quantity, rate, amount }) => ({
-                    description, quantity, rate, amount
+                    description,
+                    quantity: quantity || 0,
+                    rate: rate || 0,
+                    amount: amount || 0
                 })),
-                subtotal,
-                tax: taxAmount,
-                discount,
-                total,
-                receivedAmount,
+                subtotal: subtotal || 0,
+                tax: taxAmount || 0,
+                discount: safeDiscount || 0,
+                total: total || 0,
+                receivedAmount: safeReceivedAmount || 0,
                 status: initialData?.status || 'DRAFT',
                 description,
                 services

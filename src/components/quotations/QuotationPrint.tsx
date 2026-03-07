@@ -177,12 +177,17 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
         await generatePDFWithWatermark(element, `Estimate_${quotation.number}.pdf`, true);
     };
 
-    const baseTotal = quotation.subtotal + quotation.tax - quotation.discount;
+    const safeTax = quotation.tax || 0;
+    const safeDiscount = quotation.discount || 0;
+    const safeSubtotal = quotation.subtotal || 0;
+    const safeReceivedAmount = receivedAmount || 0;
+
+    const baseTotal = safeSubtotal + safeTax - safeDiscount;
     const displayTotal = Math.round(baseTotal);
     const roundOff = displayTotal - baseTotal;
-    const balanceDue = Math.max(0, displayTotal - receivedAmount);
-    const hasTax = quotation.tax > 0;
-    const hasDiscount = quotation.discount > 0;
+    const balanceDue = Math.max(0, displayTotal - safeReceivedAmount);
+    const hasTax = safeTax > 0;
+    const hasDiscount = safeDiscount > 0;
 
     return (
         <div className="max-w-[1200px] mx-auto py-8 px-4 print:p-0">
@@ -454,7 +459,9 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                 {/* WORDS SECTION */}
                 <div className="relative z-10 pt-4 border-t border-zinc-50">
                     <div className={`${layoutMode === 'compact' ? 'text-[10px]' : 'text-xs'} text-zinc-400 font-bold uppercase tracking-wide`}>
-                        Amount in words: <span className="text-zinc-900 italic">{toWords(balanceDue).toUpperCase().replace(/,/g, '')} RUPEES ONLY</span>
+                        Amount in words: <span className="text-zinc-900 italic">
+                            {isFinite(balanceDue) ? toWords(Math.round(balanceDue)).toUpperCase().replace(/,/g, '') : 'ZERO'} RUPEES ONLY
+                        </span>
                     </div>
                 </div>
 
