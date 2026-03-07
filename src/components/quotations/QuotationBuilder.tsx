@@ -99,8 +99,11 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     // If we have `initialData.tax`, `subtotal` is known. `taxRate = (tax / subtotal) * 100`.
 
     const [taxRate, setTaxRate] = useState(0);
-    const [discount, setDiscount] = useState(0);
-    const [receivedAmount, setReceivedAmount] = useState(0);
+    const [discount, setDiscount] = useState(initialData?.discount || 0);
+    const [discountType, setDiscountType] = useState(initialData?.discountType || 'FIXED');
+    const [discountCode, setDiscountCode] = useState(initialData?.discountCode || "");
+    const [receivedAmount, setReceivedAmount] = useState(initialData?.receivedAmount || 0);
+    const [previousBalance, setPreviousBalance] = useState(initialData?.previousBalance || 0);
     const [description, setDescription] = useState(initialData?.description || "");
     const [services, setServices] = useState<{ id: string, label: string, enabled: boolean, rate: string | number }[]>(
         initialData?.services || [
@@ -113,21 +116,28 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
 
     useEffect(() => {
         if (initialData) {
-            const sub = initialData.items.reduce((sum: number, item: any) => sum + item.amount, 0);
+            const sub = (initialItems || initialData.items).reduce((sum: number, item: any) => sum + item.amount, 0);
             if (sub > 0 && initialData.tax) {
                 setTaxRate((initialData.tax / sub) * 100);
             }
         }
-    }, [initialData]);
+    }, [initialData, initialItems]);
 
     // Calculations
     const subtotal = items.reduce((sum: number, item: LineItem) => sum + item.amount, 0) || 0;
     const safeTaxRate = taxRate || 0;
     const safeDiscount = discount || 0;
+    const safePreviousBalance = previousBalance || 0;
     const safeReceivedAmount = receivedAmount || 0;
 
     const taxAmount = (subtotal * safeTaxRate) / 100 || 0;
-    const baseTotal = subtotal + taxAmount - safeDiscount;
+
+    // Calculate discount amount based on type
+    const discountAmount = discountType === 'PERCENTAGE'
+        ? (subtotal * safeDiscount) / 100
+        : safeDiscount;
+
+    const baseTotal = subtotal + taxAmount - discountAmount + safePreviousBalance;
     const total = Math.round(baseTotal) || 0;
     const roundOff = total - baseTotal;
 
@@ -207,7 +217,10 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                 subtotal: subtotal || 0,
                 tax: taxAmount || 0,
                 discount: safeDiscount || 0,
+                discountCode: discountCode || undefined,
+                discountType: discountType,
                 total: total || 0,
+                previousBalance: safePreviousBalance || 0,
                 receivedAmount: safeReceivedAmount || 0,
                 status: initialData?.status || 'DRAFT',
                 description,
@@ -509,15 +522,55 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                             </div>
 
                             <div className="space-y-2 pt-2 border-t border-zinc-100">
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-zinc-500">Discount ({discountType === 'PERCENTAGE' ? '%' : '₹'})</span>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                className="text-xs border rounded px-1 py-0.5"
+                                                value={discountType}
+                                                onChange={(e) => setDiscountType(e.target.value)}
+                                            >
+                                                <option value="FIXED">₹</option>
+                                                <option value="PERCENTAGE">%</option>
+                                            </select>
+                                            <input
+                                                type="number"
+                                                className="w-16 text-right border rounded px-1 text-sm"
+                                                value={discount}
+                                                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                    </div>
+                                    {discountType === 'PERCENTAGE' && (
+                                        <div className="flex justify-between items-center text-xs text-zinc-400 italic">
+                                            <span>Discount Amount</span>
+                                            <span>- ₹{discountAmount.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-zinc-500">Discount (₹)</span>
+                                    <span className="text-zinc-500">Discount Code</span>
+                                    <input
+                                        type="text"
+                                        placeholder="Code"
+                                        className="w-24 text-right border rounded px-1 text-sm uppercase"
+                                        value={discountCode}
+                                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                                    />
+                                </div>
+
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-zinc-500">Prev. Balance (₹)</span>
                                     <input
                                         type="number"
                                         className="w-20 text-right border rounded px-1 text-sm"
-                                        value={discount}
-                                        onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                                        value={previousBalance}
+                                        onChange={(e) => setPreviousBalance(parseFloat(e.target.value) || 0)}
                                     />
                                 </div>
+
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-zinc-500">Received (₹)</span>
                                     <input

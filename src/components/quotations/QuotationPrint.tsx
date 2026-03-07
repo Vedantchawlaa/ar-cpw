@@ -180,14 +180,21 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
     const safeTax = quotation.tax || 0;
     const safeDiscount = quotation.discount || 0;
     const safeSubtotal = quotation.subtotal || 0;
+    const safePreviousBalance = quotation.previousBalance || 0;
     const safeReceivedAmount = receivedAmount || 0;
 
-    const baseTotal = safeSubtotal + safeTax - safeDiscount;
+    // Calculate actual discount amount based on type
+    const discountAmount = quotation.discountType === 'PERCENTAGE'
+        ? (safeSubtotal * safeDiscount) / 100
+        : safeDiscount;
+
+    const baseTotal = safeSubtotal + safeTax - discountAmount + safePreviousBalance;
     const displayTotal = Math.round(baseTotal);
     const roundOff = displayTotal - baseTotal;
     const balanceDue = Math.max(0, displayTotal - safeReceivedAmount);
     const hasTax = safeTax > 0;
-    const hasDiscount = safeDiscount > 0;
+    const hasDiscount = discountAmount > 0;
+    const hasPrevBalance = safePreviousBalance > 0;
 
     return (
         <div className="max-w-[1200px] mx-auto py-8 px-4 print:p-0">
@@ -402,8 +409,15 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
 
                         {hasDiscount && (
                             <div className="flex justify-between text-green-600 font-semibold text-[11px] uppercase tracking-wider">
-                                <span>Discount</span>
-                                <span>-₹{formatCurrency(quotation.discount)}</span>
+                                <span>Discount {quotation.discountCode ? `(${quotation.discountCode})` : ''}</span>
+                                <span>-₹{formatCurrency(discountAmount)}</span>
+                            </div>
+                        )}
+
+                        {hasPrevBalance && (
+                            <div className="flex justify-between text-amber-600 font-semibold text-[11px] uppercase tracking-wider">
+                                <span>Previous Balance</span>
+                                <span>+₹{formatCurrency(safePreviousBalance)}</span>
                             </div>
                         )}
 

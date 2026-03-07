@@ -8,8 +8,11 @@ export interface Quotation {
     discount: number;
     total: number;
     receivedAmount: number;
+    previousBalance: number;
     status: string; // 'DRAFT', 'SENT', 'ACCEPTED', 'REJECTED'
     description?: string;
+    discountCode?: string | null;
+    discountType: string;
     services?: any; // Array of { label: string, enabled: boolean }
     createdAt: Date;
     updatedAt: Date;

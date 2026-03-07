@@ -36,6 +36,8 @@ model Quotation {
   subtotal       Float
   tax            Float           @default(0)
   discount       Float           @default(0)
+  discountCode   String?
+  discountType   String          @default("FIXED")
   total          Float
   status         String          @default("DRAFT")
   description    String?         @db.Text
@@ -43,6 +45,7 @@ model Quotation {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   receivedAmount Float           @default(0)
+  previousBalance Float           @default(0)
   deadline       DateTime?
   lead           Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
   items          QuotationItem[]

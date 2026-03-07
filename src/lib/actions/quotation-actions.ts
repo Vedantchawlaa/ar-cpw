@@ -101,7 +101,10 @@ export async function createQuotation(data: {
     subtotal: number;
     tax?: number;
     discount?: number;
+    discountCode?: string;
+    discountType?: string;
     total: number;
+    previousBalance?: number;
     description?: string;
     services?: any;
     deadline?: Date | string | null;
@@ -133,7 +136,10 @@ export async function createQuotation(data: {
                     subtotal: data.subtotal,
                     tax: data.tax || 0,
                     discount: data.discount || 0,
+                    discountCode: data.discountCode,
+                    discountType: data.discountType || 'FIXED',
                     total: data.total,
+                    previousBalance: data.previousBalance || 0,
                     description: data.description,
                     services: data.services,
                     deadline: (data.deadline && !isNaN(new Date(data.deadline).getTime())) ? new Date(data.deadline) : null,
@@ -172,8 +178,11 @@ export async function updateQuotation(id: string, data: {
     subtotal: number;
     tax?: number;
     discount?: number;
+    discountCode?: string;
+    discountType?: string;
     total: number;
     receivedAmount?: number;
+    previousBalance?: number;
     status?: string;
     deadline?: Date | string | null;
     description?: string;
@@ -210,8 +219,11 @@ export async function updateQuotation(id: string, data: {
                 subtotal: data.subtotal,
                 tax: data.tax || 0,
                 discount: data.discount || 0,
+                discountCode: data.discountCode,
+                discountType: data.discountType || 'FIXED',
                 total: data.total,
                 receivedAmount: data.receivedAmount || 0,
+                previousBalance: data.previousBalance || 0,
                 status: data.status,
                 description: data.description,
                 services: data.services,
