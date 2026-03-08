@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 const PRESETS = [
+    { label: "Current Month", value: "curr" },
     { label: "Last 24 hrs", value: "24h" },
     { label: "Last 48 hrs", value: "48h" },
     { label: "Last 7 days", value: "7d" },
@@ -23,7 +24,7 @@ export function DashboardFilter() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const currentRange = searchParams.get("range") || "all";
+    const currentRange = searchParams.get("range") || "curr";
     const [isOpen, setIsOpen] = useState(false);
     const [startDate, setStartDate] = useState<Date | undefined>(
         searchParams.get("from") ? new Date(searchParams.get("from")!) : undefined
@@ -35,7 +36,7 @@ export function DashboardFilter() {
     const updateFilter = (range: string, from?: string, to?: string) => {
         const params = new URLSearchParams(searchParams.toString());
         if (range === "all") {
-            params.delete("range");
+            params.set("range", "all");
             params.delete("from");
             params.delete("to");
         } else {

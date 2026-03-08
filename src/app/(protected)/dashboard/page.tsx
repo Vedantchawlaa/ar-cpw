@@ -15,7 +15,7 @@ export default async function DashboardPage(props: {
     const userId = session?.user?.id;
 
     const searchParams = await props.searchParams;
-    const range = (searchParams.range as string) || "all";
+    const range = (searchParams.range as string) || "curr";
     const from = searchParams.from as string;
     const to = searchParams.to as string;
 
@@ -30,7 +30,10 @@ export default async function DashboardPage(props: {
         else if (range === "7d") startDate.setDate(now.getDate() - 7);
         else if (range === "14d") startDate.setDate(now.getDate() - 14);
         else if (range === "1mo") startDate.setMonth(now.getMonth() - 1);
-        else if (range === "custom" && from) {
+        else if (range === "curr") {
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            startDate.setHours(0, 0, 0, 0);
+        } else if (range === "custom" && from) {
             startDate = new Date(from);
             startDate.setHours(0, 0, 0, 0);
         }
