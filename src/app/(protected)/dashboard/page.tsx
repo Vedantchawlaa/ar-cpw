@@ -59,6 +59,7 @@ export default async function DashboardPage(props: {
     let convertedLeadsCount = 0;
     let recentQuotations: any[] = [];
     let dbError = false;
+    let errorMessage = "";
 
     try {
         const [
@@ -117,9 +118,10 @@ export default async function DashboardPage(props: {
         quotationsCount = qCount;
         convertedLeadsCount = clCount;
         recentQuotations = rQuotations;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Dashboard data fetch failed:", error);
         dbError = true;
+        errorMessage = error.message || String(error);
     }
 
     const conversionRate = leadsCount > 0 ? Math.min((convertedLeadsCount / leadsCount) * 100, 100) : 0;
@@ -153,6 +155,11 @@ export default async function DashboardPage(props: {
                                 <li>Run <code className="bg-rose-200/50 px-1 rounded">npx prisma db push</code> using your Direct URL to sync the schema.</li>
                                 <li>Check your Supabase connection pool limits.</li>
                             </ol>
+                            {errorMessage && (
+                                <div className="mt-2 p-2 bg-rose-200/30 rounded text-rose-900 font-mono text-[10px] break-all">
+                                    Error: {errorMessage}
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
