@@ -44,7 +44,7 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
                 {date ? format(date, "PPP") : <span>{placeholder}</span>}
             </Button>
             {isOpen && (
-                <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-slate-200 rounded-md shadow-lg animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute top-[calc(100%+8px)] left-0 z-[100] bg-white border border-slate-200 rounded-xl shadow-2xl p-1 animate-in fade-in slide-in-from-top-2 duration-300 ease-out min-w-[300px] w-max">
                     <Calendar
                         mode="single"
                         selected={date}

@@ -1,0 +1,5 @@
+AUTH_SECRET: SET (length: 32)
+AUTH_URL: SET (length: 21)
+DATABASE_URL: SET (length: 124)
+DIRECT_URL: SET (length: 87)
+DATABASE_URL start: postgresql://postgres.yftmchxp

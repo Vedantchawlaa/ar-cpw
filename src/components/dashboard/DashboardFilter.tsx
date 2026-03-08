@@ -89,60 +89,66 @@ export function DashboardFilter() {
             </div>
 
             {isOpen && (
-                <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-[calc(100vw-2rem)] sm:w-64 bg-white rounded-lg border border-slate-200 shadow-xl z-50 p-2 animate-in fade-in zoom-in duration-200">
+                <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-xl border border-slate-200 shadow-2xl z-50 p-3 animate-in fade-in slide-in-from-top-2 duration-300 ease-out">
                     <div className="space-y-1">
+                        <div className="px-2 py-1.5 mb-1 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Presets</div>
                         <button
                             onClick={() => updateFilter("all")}
                             className={cn(
-                                "w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
-                                currentRange === "all" ? "bg-slate-100 font-medium text-slate-900" : "hover:bg-slate-50 text-slate-700"
+                                "w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-200",
+                                currentRange === "all" ? "bg-slate-900 font-medium text-white shadow-md" : "hover:bg-slate-50 text-slate-700"
                             )}
                         >
                             All Time
                         </button>
-                        {PRESETS.map((preset) => (
-                            <button
-                                key={preset.value}
-                                onClick={() => updateFilter(preset.value)}
-                                className={cn(
-                                    "w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between",
-                                    currentRange === preset.value ? "bg-slate-100 font-medium text-slate-900" : "hover:bg-slate-50 text-slate-700"
-                                )}
-                            >
-                                {preset.label}
-                                {preset.value === "custom" && <Calendar className="h-3 w-3 text-slate-400" />}
-                            </button>
-                        ))}
+                        <div className="grid grid-cols-2 gap-1">
+                            {PRESETS.map((preset) => (
+                                <button
+                                    key={preset.value}
+                                    onClick={() => updateFilter(preset.value)}
+                                    className={cn(
+                                        "text-left px-3 py-2 text-xs rounded-lg transition-all duration-200 flex items-center justify-between",
+                                        currentRange === preset.value ? "bg-slate-100 font-semibold text-slate-900 border border-slate-200" : "hover:bg-slate-50 text-slate-600 border border-transparent"
+                                    )}
+                                >
+                                    {preset.label}
+                                    {preset.value === "custom" && <Calendar className="h-3 w-3 text-slate-400" />}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {(currentRange === "custom" || searchParams.get("range") === "custom") && (
-                        <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
-                            <div className="space-y-2">
-                                <label className="text-[10px] uppercase font-bold text-slate-500 px-1 tracking-wider text-left block">Date Range</label>
-                                <div className="grid grid-cols-1 gap-3 p-1 text-left">
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] text-slate-400 font-medium ml-1 uppercase">From</p>
+                        <div className="mt-4 pt-4 border-t border-slate-100 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-400">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between px-1">
+                                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Custom Range</label>
+                                    <span className="text-[9px] text-slate-400 font-medium italic">Select start & end dates</span>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4 p-1">
+                                    <div className="space-y-1.5">
+                                        <p className="text-[9px] text-slate-400 font-bold ml-1 uppercase tracking-tight">From</p>
                                         <DatePicker
                                             date={startDate}
                                             setDate={setStartDate}
-                                            placeholder="Pick start date"
-                                            className="h-9 w-full"
+                                            placeholder="Start Date"
+                                            className="h-10 w-full"
                                         />
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[9px] text-slate-400 font-medium ml-1 uppercase">To</p>
+                                    <div className="space-y-1.5">
+                                        <p className="text-[9px] text-slate-400 font-bold ml-1 uppercase tracking-tight">To</p>
                                         <DatePicker
                                             date={endDate}
                                             setDate={setEndDate}
-                                            placeholder="Pick end date"
-                                            className="h-9 w-full"
+                                            placeholder="End Date"
+                                            className="h-10 w-full"
                                         />
                                     </div>
                                 </div>
                             </div>
                             <Button
                                 size="sm"
-                                className="w-full h-9 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800"
+                                className="w-full h-10 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-lg shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
                                 onClick={handleCustomSubmit}
                             >
                                 Apply Custom Range

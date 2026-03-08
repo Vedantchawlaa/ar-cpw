@@ -128,8 +128,8 @@ export default function ProcessingOrdersPage() {
                 <CardHeader>
                     <CardTitle>Order List</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto">
+                <CardContent className="pb-[400px]">
+                    <div className="overflow-x-auto min-h-[500px]">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-zinc-50 border-b">
                                 <tr>
