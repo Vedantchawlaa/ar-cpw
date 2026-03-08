@@ -72,12 +72,32 @@ export function MonthFilter() {
                 onClick={resetToCurrent}
                 className={cn(
                     "text-xs font-bold px-3 h-8",
-                    (currentMonth === now.getMonth() && currentYear === now.getFullYear())
+                    (currentMonth === now.getMonth() && currentYear === now.getFullYear() && searchParams.get("range") !== "all")
                         ? "text-blue-600 bg-blue-50"
                         : "text-slate-500 hover:text-slate-900"
                 )}
             >
                 Current Month
+            </Button>
+
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.delete("month");
+                    params.delete("year");
+                    params.set("range", "all");
+                    router.push(`${pathname}?${params.toString()}`);
+                }}
+                className={cn(
+                    "text-xs font-bold px-3 h-8",
+                    searchParams.get("range") === "all"
+                        ? "text-blue-600 bg-blue-50"
+                        : "text-slate-500 hover:text-slate-900"
+                )}
+            >
+                All Time
             </Button>
         </div>
     );

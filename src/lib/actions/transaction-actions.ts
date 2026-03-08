@@ -53,15 +53,28 @@ export async function addTransaction(prevState: string | undefined, formData: Fo
     }
 }
 
-export async function getTransactions(limit = 20, dateFilter?: any) {
+export async function getTransactions(limit = 20, dateFilter?: any, search?: string) {
     const session = await auth();
     if (!session?.user || (session.user as any).role !== 'admin') {
         return [];
     }
 
     try {
+        const where: any = {};
+        if (dateFilter) where.date = dateFilter;
+        if (search) {
+            const searchAmount = parseFloat(search);
+            where.OR = [
+                { category: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+            ];
+            if (!isNaN(searchAmount)) {
+                where.OR.push({ amount: searchAmount });
+            }
+        }
+
         const transactions = await db.transaction.findMany({
-            where: dateFilter ? { date: dateFilter } : {},
+            where,
             orderBy: { date: "desc" },
             take: limit,
             include: {
@@ -77,15 +90,28 @@ export async function getTransactions(limit = 20, dateFilter?: any) {
     }
 }
 
-export async function getPnLStats(dateFilter?: any) {
+export async function getPnLStats(dateFilter?: any, search?: string) {
     const session = await auth();
     if (!session?.user || (session.user as any).role !== 'admin') {
         return { income: 0, expenses: 0, netProfit: 0 };
     }
 
     try {
+        const where: any = {};
+        if (dateFilter) where.date = dateFilter;
+        if (search) {
+            const searchAmount = parseFloat(search);
+            where.OR = [
+                { category: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+            ];
+            if (!isNaN(searchAmount)) {
+                where.OR.push({ amount: searchAmount });
+            }
+        }
+
         const transactions = await db.transaction.findMany({
-            where: dateFilter ? { date: dateFilter } : {},
+            where,
         });
 
         const income = transactions

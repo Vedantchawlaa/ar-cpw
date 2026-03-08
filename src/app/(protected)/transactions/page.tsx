@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { TrendingUp, TrendingDown, DollarSign, ListFilter } from "lucide-react";
 import { MonthFilter } from "@/components/transactions/MonthFilter";
 import { ExpensePieChart } from "@/components/transactions/ExpensePieChart";
+import { TransactionSearch } from "@/components/transactions/TransactionSearch";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 
@@ -13,6 +14,7 @@ export default async function TransactionsPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
     const searchParams = await props.searchParams;
+    const search = searchParams.search as string;
     const range = (searchParams.range as string) || "month";
     const month = searchParams.month as string;
     const year = searchParams.year as string;
@@ -57,8 +59,8 @@ export default async function TransactionsPage(props: {
         }
     }
 
-    const stats = await getPnLStats(dateFilter);
-    const allTransactions = await getTransactions(500, dateFilter);
+    const stats = await getPnLStats(dateFilter, search);
+    const allTransactions = await getTransactions(500, dateFilter, search);
     const displayTransactions = allTransactions.slice(0, 6);
 
     // Aggregate expenses for the pie chart using all period transactions
@@ -91,7 +93,10 @@ export default async function TransactionsPage(props: {
                         Viewing <span className="text-slate-900 font-semibold">{currentViewLabel}</span>
                     </p>
                 </div>
-                <MonthFilter />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <TransactionSearch />
+                    <MonthFilter />
+                </div>
             </div>
 
             {/* P&L Cards */}

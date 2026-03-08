@@ -1,7 +1,8 @@
 import { getPnLStats, getTransactions } from "@/lib/actions/transaction-actions";
 import { TransactionList } from "@/components/transactions/TransactionList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { TrendingUp, TrendingDown, DollarSign, ListFilter, ArrowLeft } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, ListFilter, ArrowLeft, Search } from "lucide-react";
+import { TransactionSearch } from "@/components/transactions/TransactionSearch";
 import { MonthFilter } from "@/components/transactions/MonthFilter";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -10,6 +11,7 @@ export default async function StatementPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
     const searchParams = await props.searchParams;
+    const search = searchParams.search as string;
     const range = (searchParams.range as string) || "month";
     const month = searchParams.month as string;
     const year = searchParams.year as string;
@@ -45,8 +47,8 @@ export default async function StatementPage(props: {
         }
     }
 
-    const stats = await getPnLStats(dateFilter);
-    const transactions = await getTransactions(500, dateFilter); // High limit for statement
+    const stats = await getPnLStats(dateFilter, search);
+    const transactions = await getTransactions(500, dateFilter, search); // High limit for statement
 
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const currentViewLabel = range === "month"
@@ -67,7 +69,10 @@ export default async function StatementPage(props: {
                     <h1 className="text-2xl font-bold tracking-tight">Full Statement</h1>
                     <p className="text-muted-foreground">Detailed transaction record for {currentViewLabel}</p>
                 </div>
-                <MonthFilter />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <TransactionSearch />
+                    <MonthFilter />
+                </div>
             </div>
 
             {/* P&L Summary Row (Compact) */}
