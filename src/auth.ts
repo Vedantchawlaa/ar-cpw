@@ -5,17 +5,9 @@ import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import db from "@/lib/db";
 import bcrypt from "bcrypt";
-import { appendFile } from "fs/promises";
-import path from "path";
 
 async function logAuthServer(message: string) {
-    const logPath = path.join(process.cwd(), "auth_server_debug.log");
-    const timestamp = new Date().toISOString();
-    try {
-        await appendFile(logPath, `[${timestamp}] ${message}\n`);
-    } catch (e) {
-        console.error("Failed to write to auth_server_debug.log", e);
-    }
+    console.log(`[Auth Server Debug] ${message}`);
 }
 
 async function getUser(email: string): Promise<any> {

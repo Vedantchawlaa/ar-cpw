@@ -6,13 +6,9 @@ import db from "@/lib/db";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { appendFile } from "fs/promises";
-import path from "path";
 
 async function logAuth(message: string) {
-    const logPath = path.join(process.cwd(), "auth_debug.log");
-    const timestamp = new Date().toISOString();
-    await appendFile(logPath, `[${timestamp}] ${message}\n`);
+    console.log(`[Auth Debug] ${message}`);
 }
 
 const RegisterSchema = z.object({
