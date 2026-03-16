@@ -9,6 +9,7 @@ import { ExpensePieChart } from "@/components/transactions/ExpensePieChart";
 import { TransactionSearch } from "@/components/transactions/TransactionSearch";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
+import { RealtimeListener } from "@/components/RealtimeListener";
 
 export default async function TransactionsPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -86,6 +87,7 @@ export default async function TransactionsPage(props: {
 
     return (
         <div className="flex flex-col gap-8 p-6">
+            <RealtimeListener tables={['Transaction']} />
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Financial Overview</h1>

@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/Button";
 import { DashboardFilter } from "@/components/dashboard/DashboardFilter";
 import { auth } from "@/auth";
 
+import { RealtimeListener } from "@/components/RealtimeListener";
+
 export default async function DashboardPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
     const session = await auth();
     const role = (session?.user as any)?.role;
+
     const userId = session?.user?.id;
 
     const searchParams = await props.searchParams;
@@ -128,6 +131,7 @@ export default async function DashboardPage(props: {
 
     return (
         <div className="flex flex-col gap-6">
+            <RealtimeListener tables={['Lead', 'Quotation', 'Transaction']} />
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
