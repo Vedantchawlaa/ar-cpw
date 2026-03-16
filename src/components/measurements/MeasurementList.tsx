@@ -292,14 +292,15 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
                         <Link href={`/measurements/${m.id}`} key={m.id}>
                             <Card className="hover:border-blue-500 transition-colors cursor-pointer h-full">
                                 <CardHeader className="pb-2">
-                                    <div className="flex justify-between items-start">
-                                        <CardTitle className="text-lg font-semibold truncate pr-2">
+                                    <div className="flex sm:flex-row flex-col justify-between items-start gap-2">
+                                        <CardTitle className="text-lg font-semibold truncate pr-2 w-full">
                                             {m.title || "Untitled Measurement"}
                                         </CardTitle>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-slate-400 whitespace-nowrap">
+                                        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                                            <span className="text-xs text-slate-400 whitespace-nowrap hidden sm:inline-block">
                                                 {formatDate(m.updatedAt)}
                                             </span>
+                                            <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
                                             <button
                                                 onClick={(e) => generatePDF(m, e)}
                                                 className="p-1.5 hover:bg-slate-100 rounded-md transition-colors"
@@ -321,6 +322,7 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
                                             >
                                                 <Trash2 className="h-4 w-4 text-red-600" />
                                             </button>
+                                            </div>
                                         </div>
                                     </div>
                                     <p className="text-sm text-muted-foreground truncate">
