@@ -325,7 +325,7 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                         </thead>
                         <tbody className="divide-y divide-zinc-100 text-zinc-800">
                             {quotation.items.map((item, idx) => {
-                                const hasItemDiscount = item.discount && item.discount > 0;
+                                const hasItemDiscount = (item.discount || 0) > 0;
                                 const originalRate = item.rate;
                                 const discountedRate = hasItemDiscount ? Math.round(item.rate * (1 - item.discount! / 100)) : item.rate;
                                 
@@ -347,8 +347,8 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                                     <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-center font-medium`}>{item.quantity}</td>
                                     <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right whitespace-nowrap font-medium`}>
                                         {hasItemDiscount ? (
-                                            <div className="flex flex-col items-end leading-tight">
-                                                <span className="text-[10px] text-zinc-400 line-through">₹{formatCurrency(originalRate)}</span>
+                                            <div className="inline-flex flex-col items-end leading-none">
+                                                <del className="text-[10px] text-zinc-400 mb-1">₹{formatCurrency(originalRate)}</del>
                                                 <span className="text-zinc-900 font-bold">₹{formatCurrency(discountedRate)}</span>
                                             </div>
                                         ) : (
