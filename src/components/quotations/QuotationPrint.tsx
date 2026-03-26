@@ -192,6 +192,14 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
     const displayTotal = Math.round(baseTotal);
     const roundOff = displayTotal - baseTotal;
     const balanceDue = Math.max(0, displayTotal - safeReceivedAmount);
+    const itemDiscountTotal = quotation.items.reduce((sum, item) => {
+        if (item.discount && item.discount > 0) {
+            const discountedRate = Math.round(item.rate * (1 - item.discount / 100));
+            return sum + ((item.rate - discountedRate) * item.quantity);
+        }
+        return sum;
+    }, 0);
+
     const hasTax = safeTax > 0;
     const hasDiscount = discountAmount > 0;
     const hasPrevBalance = safePreviousBalance > 0;
@@ -316,19 +324,40 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100 text-zinc-800">
-                            {quotation.items.map((item, idx) => (
+                            {quotation.items.map((item, idx) => {
+                                const hasItemDiscount = item.discount && item.discount > 0;
+                                const originalRate = item.rate;
+                                const discountedRate = hasItemDiscount ? Math.round(item.rate * (1 - item.discount! / 100)) : item.rate;
+                                
+                                return (
                                 <tr key={idx} className="hover:bg-zinc-50/50 break-inside-avoid">
                                     <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'}`}>
-                                        <div className="font-bold uppercase tracking-tight text-zinc-900">{item.description}</div>
+                                        <div className="font-bold uppercase tracking-tight text-zinc-900">
+                                            {item.description}
+                                            {hasItemDiscount && (
+                                                <span className="ml-2 inline-block px-1.5 py-0.5 bg-green-100 text-green-700 text-[9px] rounded-sm font-bold tracking-tighter align-middle">
+                                                    -{Number(item.discount!.toFixed(2))}%
+                                                </span>
+                                            )}
+                                        </div>
                                         {item.details && (
                                             <div className="text-zinc-500 text-[10px] italic mt-1.5 whitespace-pre-wrap leading-relaxed max-w-md">{item.details}</div>
                                         )}
                                     </td>
                                     <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-center font-medium`}>{item.quantity}</td>
-                                    <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right whitespace-nowrap font-medium`}>₹{formatCurrency(item.rate)}</td>
-                                    <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right font-bold whitespace-nowrap text-zinc-900`}>₹{formatCurrency(item.quantity * item.rate)}</td>
+                                    <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right whitespace-nowrap font-medium`}>
+                                        {hasItemDiscount ? (
+                                            <div className="flex flex-col items-end leading-tight">
+                                                <span className="text-[10px] text-zinc-400 line-through">₹{formatCurrency(originalRate)}</span>
+                                                <span className="text-zinc-900 font-bold">₹{formatCurrency(discountedRate)}</span>
+                                            </div>
+                                        ) : (
+                                            <span>₹{formatCurrency(originalRate)}</span>
+                                        )}
+                                    </td>
+                                    <td className={`px-4 ${layoutMode === 'compact' ? 'py-3' : 'py-5'} text-right font-bold whitespace-nowrap text-zinc-900`}>₹{formatCurrency(item.amount)}</td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                     </table>
                 </div>
@@ -411,6 +440,13 @@ export default function QuotationPrint({ quotation, layoutMode: initialLayout = 
                             <div className="flex justify-between text-green-600 font-semibold text-[11px] uppercase tracking-wider">
                                 <span>Discount {quotation.discountCode ? `(${quotation.discountCode})` : ''}</span>
                                 <span>-₹{formatCurrency(discountAmount)}</span>
+                            </div>
+                        )}
+
+                        {itemDiscountTotal > 0 && (
+                            <div className="flex justify-between text-green-600 font-semibold text-[11px] uppercase tracking-wider italic">
+                                <span>Item Discounts Savings</span>
+                                <span>-₹{formatCurrency(itemDiscountTotal)}</span>
                             </div>
                         )}
 

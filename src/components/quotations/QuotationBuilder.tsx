@@ -34,6 +34,7 @@ interface LineItem {
     details?: string;
     quantity: number;
     rate: number;
+    discount?: number;
     amount: number;
 }
 
@@ -48,8 +49,8 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
 
     const [items, setItems] = useState<LineItem[]>(
         initialItems ||
-        initialData?.items.map((i: any) => ({ ...i, id: i.id, details: i.details || "" })) ||
-        [{ id: '1', description: '', details: '', quantity: 1, rate: 0, amount: 0 }]
+        initialData?.items.map((i: any) => ({ ...i, id: i.id, details: i.details || "", discount: i.discount || 0 })) ||
+        [{ id: '1', description: '', details: '', quantity: 1, rate: 0, discount: 0, amount: 0 }]
     );
     const [products, setProducts] = useState<Product[]>([]);
 
@@ -132,7 +133,6 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
 
     const taxAmount = (subtotal * safeTaxRate) / 100 || 0;
 
-    // Calculate discount amount based on type
     const discountAmount = discountType === 'PERCENTAGE'
         ? (subtotal * safeDiscount) / 100
         : safeDiscount;
@@ -140,6 +140,14 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     const baseTotal = subtotal + taxAmount - discountAmount + safePreviousBalance;
     const total = Math.round(baseTotal) || 0;
     const roundOff = total - baseTotal;
+    
+    const itemDiscountTotal = items.reduce((sum, item) => {
+        if (item.discount && item.discount > 0) {
+            const discountedRate = Math.round(item.rate * (1 - item.discount / 100));
+            return sum + ((item.rate - discountedRate) * item.quantity);
+        }
+        return sum;
+    }, 0);
 
     const handleItemChange = (id: string, field: keyof LineItem, value: any) => {
         setItems(prev => prev.map(item => {
@@ -155,8 +163,10 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                 }
 
                 // Auto-calc amount
-                if (field === 'quantity' || field === 'rate' || (field === 'description' && updated.rate !== item.rate)) {
-                    updated.amount = updated.quantity * updated.rate;
+                if (field === 'quantity' || field === 'rate' || field === 'discount' || (field === 'description' && updated.rate !== item.rate)) {
+                    const d = updated.discount || 0;
+                    const discountedRate = Math.round(updated.rate * (1 - d / 100));
+                    updated.amount = updated.quantity * discountedRate;
                 }
                 return updated;
             }
@@ -167,7 +177,7 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
     const addItem = () => {
         setItems(prev => [
             ...prev,
-            { id: Math.random().toString(), description: '', details: '', quantity: 1, rate: 0, amount: 0 }
+            { id: Math.random().toString(), description: '', details: '', quantity: 1, rate: 0, discount: 0, amount: 0 }
         ]);
     };
 
@@ -208,10 +218,11 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
             const payload = {
                 number: quotationNumber || undefined,
                 leadId: selectedLeadId,
-                items: items.map(({ description, quantity, rate, amount }) => ({
+                items: items.map(({ description, quantity, rate, discount, amount }) => ({
                     description,
                     quantity: quantity || 0,
                     rate: rate || 0,
+                    discount: discount || 0,
                     amount: amount || 0
                 })),
                 subtotal: subtotal || 0,
@@ -400,7 +411,7 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                         <CardContent className="space-y-4">
                             {items.map((item, index) => (
                                 <div key={item.id} className="grid grid-cols-12 gap-2 items-end border-b border-zinc-100 pb-4 last:border-0 last:pb-0">
-                                    <div className="col-span-12 md:col-span-5">
+                                    <div className="col-span-12 md:col-span-3">
                                         <div className="relative group">
                                             <div className="flex items-center justify-between mb-1">
                                                 <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Description</label>
@@ -450,7 +461,7 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="col-span-4 md:col-span-2">
+                                    <div className="col-span-4 md:col-span-1">
                                         <label className="text-xs font-medium text-zinc-500 mb-1 block">Qty</label>
                                         <Input
                                             type="number"
@@ -468,7 +479,34 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                             onChange={(e) => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
                                         />
                                     </div>
-                                    <div className="col-span-3 md:col-span-2">
+                                    <div className="col-span-4 md:col-span-1">
+                                        <label className="text-xs font-medium text-zinc-500 mb-1 block">Disc %</label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={item.discount !== undefined ? Number(item.discount.toFixed(2)) : ''}
+                                            onChange={(e) => handleItemChange(item.id, 'discount', parseFloat(e.target.value) || 0)}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div className="col-span-6 md:col-span-2">
+                                        <label className="text-xs font-medium text-zinc-500 mb-1 block">Disc. Rate</label>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            value={item.rate > 0 ? Math.round(item.rate * (1 - (item.discount || 0) / 100)) : ''}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                if (!isNaN(val)) {
+                                                    const newDiscount = item.rate > 0 ? ((item.rate - val) / item.rate) * 100 : 0;
+                                                    handleItemChange(item.id, 'discount', newDiscount);
+                                                }
+                                            }}
+                                            placeholder="Disc Rate"
+                                        />
+                                    </div>
+                                    <div className="col-span-6 md:col-span-2">
                                         <label className="text-xs font-medium text-zinc-500 mb-1 block">Amount</label>
                                         <div className="h-10 flex items-center px-3 bg-zinc-50 rounded-md text-sm font-semibold">
                                             ₹{item.amount.toFixed(0)}
@@ -504,6 +542,12 @@ export default function QuotationBuilder({ leads, initialData, initialItems, ini
                                 <span className="text-zinc-500">Subtotal</span>
                                 <span className="font-medium">₹{subtotal.toFixed(2)}</span>
                             </div>
+                            {itemDiscountTotal > 0 && (
+                                <div className="flex justify-between items-center text-xs text-green-600 italic">
+                                    <span>Item Discounts Savings</span>
+                                    <span>- ₹{itemDiscountTotal.toFixed(2)}</span>
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center text-sm">

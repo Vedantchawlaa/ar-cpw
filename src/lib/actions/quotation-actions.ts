@@ -97,7 +97,7 @@ export async function getActiveOrders() {
 export async function createQuotation(data: {
     number?: string;
     leadId: string;
-    items: { description: string; details?: string; quantity: number; rate: number; amount: number }[];
+    items: { description: string; details?: string; quantity: number; rate: number; discount?: number; amount: number }[];
     subtotal: number;
     tax?: number;
     discount?: number;
@@ -149,6 +149,7 @@ export async function createQuotation(data: {
                             details: item.details,
                             quantity: item.quantity,
                             rate: item.rate,
+                            discount: item.discount || 0,
                             amount: item.amount,
                         })),
                     },
@@ -174,7 +175,7 @@ export async function createQuotation(data: {
 export async function updateQuotation(id: string, data: {
     number?: string;
     leadId: string;
-    items: { description: string; details?: string; quantity: number; rate: number; amount: number }[];
+    items: { description: string; details?: string; quantity: number; rate: number; discount?: number; amount: number }[];
     subtotal: number;
     tax?: number;
     discount?: number;
@@ -233,6 +234,7 @@ export async function updateQuotation(id: string, data: {
                         details: item.details,
                         quantity: item.quantity,
                         rate: item.rate,
+                        discount: item.discount || 0,
                         amount: item.amount,
                     })),
                 },

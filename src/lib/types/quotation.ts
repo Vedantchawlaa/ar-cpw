@@ -24,6 +24,7 @@ export interface QuotationItem {
     description: string;
     quantity: number;
     rate: number;
+    discount?: number;
     amount: number;
     details?: string;
 }
