@@ -11,6 +11,7 @@ const TransactionSchema = z.object({
     category: z.string().min(1, "Category is required"),
     description: z.string().optional(),
     date: z.coerce.date(),
+    emailId: z.string().optional(),
 });
 
 export async function addTransaction(prevState: string | undefined, formData: FormData) {
@@ -25,13 +26,14 @@ export async function addTransaction(prevState: string | undefined, formData: Fo
         category: formData.get("category"),
         description: formData.get("description"),
         date: formData.get("date"),
+        emailId: formData.get("emailId"),
     });
 
     if (!validatedFields.success) {
         return "Invalid input. Please check your details.";
     }
 
-    const { type, amount, category, description, date } = validatedFields.data;
+    const { type, amount, category, description, date, emailId } = validatedFields.data;
 
     try {
         await db.transaction.create({
@@ -42,6 +44,7 @@ export async function addTransaction(prevState: string | undefined, formData: Fo
                 description,
                 date,
                 userId: session.user.id,
+                emailId,
             },
         });
 

@@ -40,7 +40,7 @@ export const authConfig = {
             if (user) {
                 token.id = user.id;
                 token.role = (user as any).role;
-                console.log("JWT Callback - Set ID:", token.id);
+                // console.log("JWT Callback - Set ID:", token.id);
             }
             return token;
         },
@@ -48,7 +48,7 @@ export const authConfig = {
             if (session.user) {
                 session.user.id = (token.id as string) || (token.sub as string);
                 (session.user as any).role = token.role;
-                console.log("Session Callback - Set User ID:", session.user.id);
+                // console.log("Session Callback - Set User ID:", session.user.id);
             }
             return session;
         },

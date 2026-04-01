@@ -130,6 +130,7 @@ model Transaction {
   updatedAt   DateTime @updatedAt
   userId      String?
   user        User?    @relation(fields: [userId], references: [id])
+  emailId     String?  @unique
 }
 
 model Order {
