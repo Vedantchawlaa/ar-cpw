@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
     // ✅ YOUR FILTER (FINAL)
-    const query = '5953 (debited OR credited) ("INR" OR "Rs") newer_than:7d';
+    const query = '5953 (debited OR credited) ("INR" OR "Rs") newer_than:1d';
     console.log("Searching Gmail with query:", query);
     
     const res = await gmail.users.messages.list({
