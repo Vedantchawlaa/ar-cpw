@@ -5,6 +5,20 @@ import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 
+async function isAdminUser() {
+    const session = await auth();
+    if (!session?.user) return false;
+    if ((session.user as any).role === 'admin') return true;
+    if (session.user.email) {
+        const dbUser = await db.user.findUnique({
+            where: { email: session.user.email },
+            select: { role: true }
+        });
+        return dbUser?.role === 'admin';
+    }
+    return false;
+}
+
 const TransactionSchema = z.object({
     type: z.enum(["INCOME", "EXPENSE"]),
     amount: z.coerce.number().positive("Amount must be positive"),
@@ -16,7 +30,7 @@ const TransactionSchema = z.object({
 
 export async function addTransaction(prevState: string | undefined, formData: FormData) {
     const session = await auth();
-    if (!session?.user || (session.user as any).role !== 'admin') {
+    if (!await isAdminUser()) {
         return "Unauthorized: Admin access required.";
     }
 
@@ -24,13 +38,14 @@ export async function addTransaction(prevState: string | undefined, formData: Fo
         type: formData.get("type"),
         amount: formData.get("amount"),
         category: formData.get("category"),
-        description: formData.get("description"),
+        description: formData.get("description")?.toString() || undefined,
         date: formData.get("date"),
-        emailId: formData.get("emailId"),
+        emailId: formData.get("emailId")?.toString() || undefined,
     });
 
     if (!validatedFields.success) {
-        return "Invalid input. Please check your details.";
+        const errorMessages = validatedFields.error.issues.map((err: any) => err.message).join(", ");
+        return `Invalid input: ${errorMessages}`;
     }
 
     const { type, amount, category, description, date, emailId } = validatedFields.data;
@@ -43,7 +58,7 @@ export async function addTransaction(prevState: string | undefined, formData: Fo
                 category,
                 description,
                 date,
-                userId: session.user.id,
+                userId: session?.user?.id,
                 emailId,
             },
         });
@@ -57,8 +72,7 @@ export async function addTransaction(prevState: string | undefined, formData: Fo
 }
 
 export async function getTransactions(limit = 20, dateFilter?: any, search?: string) {
-    const session = await auth();
-    if (!session?.user || (session.user as any).role !== 'admin') {
+    if (!await isAdminUser()) {
         return [];
     }
 
@@ -94,8 +108,7 @@ export async function getTransactions(limit = 20, dateFilter?: any, search?: str
 }
 
 export async function getPnLStats(dateFilter?: any, search?: string) {
-    const session = await auth();
-    if (!session?.user || (session.user as any).role !== 'admin') {
+    if (!await isAdminUser()) {
         return { income: 0, expenses: 0, netProfit: 0 };
     }
 
@@ -137,8 +150,7 @@ export async function getPnLStats(dateFilter?: any, search?: string) {
 }
 
 export async function updateTransaction(id: string, prevState: any, formData: FormData) {
-    const session = await auth();
-    if (!session?.user || (session.user as any).role !== 'admin') {
+    if (!await isAdminUser()) {
         return "Unauthorized";
     }
 
@@ -146,12 +158,13 @@ export async function updateTransaction(id: string, prevState: any, formData: Fo
         type: formData.get("type"),
         amount: formData.get("amount"),
         category: formData.get("category"),
-        description: formData.get("description"),
+        description: formData.get("description")?.toString() || undefined,
         date: formData.get("date"),
     });
 
     if (!validatedFields.success) {
-        return "Invalid input";
+        const errorMessages = validatedFields.error.issues.map((err: any) => err.message).join(", ");
+        return `Invalid input: ${errorMessages}`;
     }
 
     const { type, amount, category, description, date } = validatedFields.data;
@@ -171,8 +184,7 @@ export async function updateTransaction(id: string, prevState: any, formData: Fo
 }
 
 export async function deleteTransaction(id: string) {
-    const session = await auth();
-    if (!session?.user || (session.user as any).role !== 'admin') {
+    if (!await isAdminUser()) {
         return { success: false, error: "Unauthorized" };
     }
 

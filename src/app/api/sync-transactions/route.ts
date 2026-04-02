@@ -39,7 +39,15 @@ export async function GET(request: Request) {
     const hasValidCronSecret = process.env.CRON_SECRET && authHeader === `Bearer ${process.env.CRON_SECRET}`;
 
     const session = await auth();
-    const isAdmin = session?.user && (session.user as any).role === 'admin';
+    let isAdmin = false;
+    
+    if (session?.user?.email) {
+      const dbUser = await db.user.findUnique({
+        where: { email: session.user.email },
+        select: { role: true }
+      });
+      isAdmin = dbUser?.role === 'admin';
+    }
 
     if (!hasValidCronSecret && !isAdmin) {
       return Response.json({ success: false, error: 'Unauthorized context. Provide CRON secret or log in as Admin.' }, { status: 401 });
