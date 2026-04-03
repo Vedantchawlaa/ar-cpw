@@ -37,6 +37,9 @@ interface MeasurementItem {
     sheerTrackSize?: string; // Size of the sheer track in inches
     sheerWidth?: string; // Separate width for sheer
     sheerHeight?: string; // Separate height for sheer
+    mountType?: "Ceiling" | "Wall"; // Mount preference
+    curtainType?: "Pinch Pleat" | "Ripple Fold"; // Style type
+    tiesRequired?: boolean; // Whether curtain ties are needed
 }
 
 // ... (Rest of interfaces remain same)
@@ -250,7 +253,7 @@ export function MeasurementEditor({
         } else if (newItem.type === "Blind") {
             // Blind Calculations
             const effectiveHeight = Math.max(height, 39);
-            const calculatedSqft = (width * effectiveHeight) / 144;
+            const calculatedSqft = Math.ceil((width * effectiveHeight) / 144);
             newItem.sqft = Math.max(calculatedSqft, 11).toFixed(2);
 
             newItem.fabricRequired = undefined;
@@ -659,13 +662,65 @@ export function MeasurementEditor({
                                                                     type="checkbox"
                                                                     checked={item.trackRequired !== false}
                                                                     onChange={(e) => updateItem(floor.id, room.id, item.id, 'trackRequired', e.target.checked)}
-                                                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                                                                 />
-                                                                <span className="text-sm text-zinc-700">
-                                                                    {item.trackRequired !== false ? 'Yes' : 'No'}
-                                                                </span>
+                                                                <span className="text-sm text-slate-700">Include Base Track</span>
                                                             </label>
                                                         </div>
+                                                    </div>
+                                                )}
+
+                                                {item.type === 'Curtain' && (
+                                                    <div className="md:col-span-full bg-slate-50 border rounded-md p-2 flex flex-wrap gap-4 items-center">
+                                                        <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold pr-2 border-r">Hardware Options</span>
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                checked={item.mountType !== "Ceiling"}
+                                                                onChange={() => updateItem(floor.id, room.id, item.id, 'mountType', "Wall")}
+                                                                className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+                                                            />
+                                                            <span className="text-sm font-medium text-slate-700 hover:text-blue-600">Wall Mount</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                checked={item.mountType === "Ceiling"}
+                                                                onChange={() => updateItem(floor.id, room.id, item.id, 'mountType', "Ceiling")}
+                                                                className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+                                                            />
+                                                            <span className="text-sm font-medium text-slate-700 hover:text-blue-600">Ceiling Mount</span>
+                                                        </label>
+
+                                                        <div className="w-px h-4 bg-slate-300 mx-1 hidden sm:block"></div>
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                checked={item.curtainType !== "Pinch Pleat"}
+                                                                onChange={() => updateItem(floor.id, room.id, item.id, 'curtainType', "Ripple Fold")}
+                                                                className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+                                                            />
+                                                            <span className="text-sm font-medium text-slate-700 hover:text-blue-600">Ripple Fold</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                checked={item.curtainType === "Pinch Pleat"}
+                                                                onChange={() => updateItem(floor.id, room.id, item.id, 'curtainType', "Pinch Pleat")}
+                                                                className="text-blue-600 focus:ring-blue-500 w-4 h-4"
+                                                            />
+                                                            <span className="text-sm font-medium text-slate-700 hover:text-blue-600">Pinch Pleat</span>
+                                                        </label>
+
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!item.tiesRequired}
+                                                                onChange={(e) => updateItem(floor.id, room.id, item.id, 'tiesRequired', e.target.checked)}
+                                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                                                            />
+                                                            <span className="text-sm font-medium text-slate-700 hover:text-blue-600">Ties Required</span>
+                                                        </label>
                                                     </div>
                                                 )}
 

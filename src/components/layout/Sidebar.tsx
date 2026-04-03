@@ -61,6 +61,12 @@ export function Sidebar() {
             adminOnly: false,
         },
         {
+            href: "/vendors",
+            icon: Store,
+            label: "Vendors",
+            adminOnly: true,
+        },
+        {
             href: "/stock",
             icon: Package,
             label: "Stock",

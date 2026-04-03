@@ -1,5 +1,8 @@
 import { getMeasurementById } from "@/lib/actions/measurement-actions";
 import { MeasurementEditor } from "@/components/leads/MeasurementEditor";
+import { SizesToShare } from "@/components/leads/SizesToShare";
+import { AccessoryCounter } from "@/components/leads/AccessoryCounter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -34,13 +37,40 @@ export default async function MeasurementEditPage({ params }: PageProps) {
                 </h2>
             </div>
 
-            <MeasurementEditor
-                measurementId={measurement?.id}
-                initialData={measurement?.data}
-                initialNotes={measurement?.notes || ""}
-                initialCustomerName={measurement?.customerName || ""}
-                initialTitle={measurement?.title || ""}
-            />
+            <Tabs defaultValue="measurements" className="space-y-4">
+                <TabsList>
+                    <TabsTrigger value="measurements">Measurements & Sizing</TabsTrigger>
+                    {measurement && <TabsTrigger value="sizes">Sizes to Share</TabsTrigger>}
+                    {measurement && <TabsTrigger value="accessories">Accessory Counter</TabsTrigger>}
+                </TabsList>
+                <TabsContent value="measurements" className="space-y-4">
+                    <MeasurementEditor
+                        measurementId={measurement?.id}
+                        initialData={measurement?.data}
+                        initialNotes={measurement?.notes || ""}
+                        initialCustomerName={measurement?.customerName || ""}
+                        initialTitle={measurement?.title || ""}
+                    />
+                </TabsContent>
+                {measurement && (
+                    <TabsContent value="sizes" className="space-y-4">
+                        <SizesToShare
+                            measurementId={measurement.id}
+                            leadId={measurement.leadId}
+                            initialData={measurement.data}
+                        />
+                    </TabsContent>
+                )}
+                {measurement && (
+                    <TabsContent value="accessories" className="space-y-4">
+                        <AccessoryCounter 
+                            initialData={measurement.data}
+                            measurementId={measurement.id}
+                            customerName={measurement.customerName}
+                        />
+                    </TabsContent>
+                )}
+            </Tabs>
         </div>
     );
 }

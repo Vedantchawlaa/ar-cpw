@@ -1,6 +1,8 @@
 import { getLeadById } from "@/lib/actions/lead-actions";
 import { getMeasurementByLeadId } from "@/lib/actions/measurement-actions";
 import { MeasurementEditor } from "@/components/leads/MeasurementEditor";
+import { SizesToShare } from "@/components/leads/SizesToShare";
+import { AccessoryCounter } from "@/components/leads/AccessoryCounter";
 import { LeadForm } from "@/components/leads/LeadForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { notFound } from "next/navigation";
@@ -43,6 +45,8 @@ export default async function LeadDetailPage({ params }: PageProps) {
                 <TabsList>
                     <TabsTrigger value="details">Lead Details</TabsTrigger>
                     <TabsTrigger value="measurements">Measurements & Sizing</TabsTrigger>
+                    <TabsTrigger value="sizes">Sizes to Share</TabsTrigger>
+                    <TabsTrigger value="accessories">Accessory Counter</TabsTrigger>
                 </TabsList>
                 <TabsContent value="details" className="space-y-4">
                     <div className="max-w-2xl">
@@ -54,8 +58,23 @@ export default async function LeadDetailPage({ params }: PageProps) {
                 <TabsContent value="measurements" className="space-y-4">
                     <MeasurementEditor
                         leadId={lead.id}
+                        measurementId={measurement.data?.id}
                         initialData={measurement.data?.data}
                         initialNotes={measurement.data?.notes}
+                    />
+                </TabsContent>
+                <TabsContent value="sizes" className="space-y-4">
+                    <SizesToShare
+                        leadId={lead.id}
+                        measurementId={measurement.data?.id}
+                        initialData={measurement.data?.data}
+                    />
+                </TabsContent>
+                <TabsContent value="accessories" className="space-y-4">
+                    <AccessoryCounter 
+                        initialData={measurement.data?.data}
+                        measurementId={measurement.data?.id}
+                        customerName={lead.name}
                     />
                 </TabsContent>
             </Tabs>

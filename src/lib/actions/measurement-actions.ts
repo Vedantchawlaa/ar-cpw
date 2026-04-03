@@ -281,3 +281,30 @@ export async function generateQuotationFromMeasurement(measurementId: string) {
         return { success: false, error: error.message || "Failed to generate quotation" };
     }
 }
+
+export async function toggleVendorOrder(measurementId: string, type: 'tracks' | 'blinds' | 'curtains', isCompleted: boolean) {
+    try {
+        const measurement = await (db as any).measurement.findUnique({
+            where: { id: measurementId }
+        });
+        if (!measurement) return { success: false, error: "Measurement not found" };
+
+        let data = typeof measurement.data === 'string' ? JSON.parse(measurement.data) : { ...measurement.data };
+        if (!data) data = {};
+        if (!data.sharedSizes) data.sharedSizes = {};
+        if (!data.sharedSizes.completed) data.sharedSizes.completed = { tracks: false, blinds: false, curtains: false };
+
+        data.sharedSizes.completed[type] = isCompleted;
+
+        await (db as any).measurement.update({
+            where: { id: measurementId },
+            data: { data }
+        });
+
+        revalidatePath("/vendors");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to toggle vendor order:", error);
+        return { success: false, error: error.message };
+    }
+}
