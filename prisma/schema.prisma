@@ -188,3 +188,28 @@ model Attachment {
   data      Bytes
   createdAt DateTime @default(now())
 }
+
+model MonthlyBalance {
+  id               String   @id @default(uuid())
+  month            Int      // 0-11 (Jan=0, Dec=11)
+  year             Int
+  startingBalance  Float    @default(0)
+  endingBalance    Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([month, year])
+}
+
+model WeeklyBankBalance {
+  id              String   @id @default(uuid())
+  weekStart       DateTime // Always a Monday (time zeroed to 00:00:00 UTC)
+  bankBalance     Float    // Actual bank balance
+  cashBalance     Float    @default(0) // Physical cash in hand
+  recordedNet     Float    // Income - Expenses for that week (computed at entry time)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([weekStart])
+}
