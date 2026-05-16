@@ -1,6 +1,10 @@
 import { getPnLStats, getTransactions } from "@/lib/actions/transaction-actions";
+import { getMonthlyBalance } from "@/lib/actions/balance-actions";
+import { getThisWeekBankBalance, getWeeklyBankHistory } from "@/lib/actions/bank-balance-actions";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { TransactionList } from "@/components/transactions/TransactionList";
+import { BalanceWidget } from "@/components/transactions/BalanceWidget";
+import { MondayBankPrompt } from "@/components/transactions/MondayBankPrompt";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 // @ts-ignore
 import { TrendingUp, TrendingDown, DollarSign, ListFilter } from "lucide-react";
@@ -64,6 +68,18 @@ export default async function TransactionsPage(props: {
     const stats = await getPnLStats(dateFilter, search);
     const allTransactions = await getTransactions(500, dateFilter, search);
     const displayTransactions = allTransactions.slice(0, 6);
+
+    // Load monthly balance for reconciliation widget
+    const selectedMonth = month ? parseInt(month) : now.getMonth();
+    const selectedYear = year ? parseInt(year) : now.getFullYear();
+    const monthlyBalance = range === "month" ? await getMonthlyBalance(selectedMonth, selectedYear) : null;
+
+    // Load weekly bank balance data
+    const isMonday = now.getDay() === 1;
+    const [thisWeekEntry, weeklyHistory] = await Promise.all([
+        getThisWeekBankBalance(),
+        getWeeklyBankHistory(12),
+    ]);
 
     // Aggregate expenses for the pie chart using all period transactions
     const expenseDataMap: Record<string, number> = {};
@@ -156,6 +172,30 @@ export default async function TransactionsPage(props: {
                 <div className="lg:col-span-1 space-y-6">
                     <div className="sticky top-6 space-y-6">
                         <TransactionForm />
+                        {range === "month" && (
+                            <BalanceWidget
+                                month={selectedMonth}
+                                year={selectedYear}
+                                income={stats.income}
+                                expenses={stats.expenses}
+                                initialStarting={monthlyBalance?.startingBalance ?? 0}
+                                initialEnding={monthlyBalance?.endingBalance ?? null}
+                                carriedForward={monthlyBalance?.carriedForward ?? false}
+                            />
+                        )}
+                        <MondayBankPrompt
+                            isMonday={isMonday}
+                            thisWeekEntry={thisWeekEntry ? {
+                                ...thisWeekEntry,
+                                weekStart: thisWeekEntry.weekStart instanceof Date
+                                    ? thisWeekEntry.weekStart.toISOString()
+                                    : thisWeekEntry.weekStart,
+                            } : null}
+                            history={(weeklyHistory as any[]).map((h: any) => ({
+                                ...h,
+                                weekStart: h.weekStart instanceof Date ? h.weekStart.toISOString() : h.weekStart,
+                            }))}
+                        />
                         <ExpensePieChart data={expenseData} />
                     </div>
                 </div>
