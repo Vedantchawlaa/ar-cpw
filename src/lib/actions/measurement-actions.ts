@@ -51,9 +51,10 @@ export async function saveMeasurement(params: {
     notes?: string;
     customerName?: string;
     title?: string;
+    referenceFiles?: { name: string; url: string }[];
 }) {
     try {
-        const { id, leadId, data, notes, customerName, title } = params;
+        const { id, leadId, data, notes, customerName, title, referenceFiles } = params;
         let measurement;
 
         if (id) {
@@ -65,6 +66,7 @@ export async function saveMeasurement(params: {
                     notes,
                     customerName,
                     title,
+                    referenceFiles,
                     updatedAt: new Date(),
                 }
             });
@@ -75,6 +77,7 @@ export async function saveMeasurement(params: {
                 update: {
                     data,
                     notes,
+                    referenceFiles,
                     updatedAt: new Date(),
                 },
                 create: {
@@ -83,6 +86,7 @@ export async function saveMeasurement(params: {
                     notes,
                     customerName,
                     title,
+                    referenceFiles,
                 }
             });
         } else {
@@ -94,6 +98,7 @@ export async function saveMeasurement(params: {
                     data,
                     notes,
                     images: [],
+                    referenceFiles,
                 }
             });
         }

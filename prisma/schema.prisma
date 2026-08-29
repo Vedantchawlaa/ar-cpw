@@ -1,11 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+  schemas   = ["public", "auth"]
 }
 
 model Lead {
@@ -25,6 +27,8 @@ model Lead {
   user               User?       @relation(fields: [userId], references: [id])
   quotations         Quotation[]
   measurement        Measurement?
+
+  @@schema("public")
 }
 
 model Quotation {
@@ -49,6 +53,8 @@ model Quotation {
   deadline       DateTime?
   lead           Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
   items          QuotationItem[]
+
+  @@schema("public")
 }
 
 model QuotationItem {
@@ -61,6 +67,8 @@ model QuotationItem {
   amount      Float
   details     String?   @db.Text
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@schema("public")
 }
 
 model Product {
@@ -72,6 +80,8 @@ model Product {
   stockQuantity Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@schema("public")
 }
 
 model ShopProduct {
@@ -89,6 +99,8 @@ model ShopProduct {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   reviews        ShopReview[]
+
+  @@schema("public")
 }
 
 model ShopReview {
@@ -104,6 +116,7 @@ model ShopReview {
 
   @@index([shopProductId])
   @@index([userId])
+  @@schema("public")
 }
 
 model User {
@@ -117,6 +130,8 @@ model User {
   leads        Lead[]
   transactions Transaction[]
   shopReviews  ShopReview[]
+
+  @@schema("public")
 }
 
 model Transaction {
@@ -131,6 +146,8 @@ model Transaction {
   userId      String?
   user        User?    @relation(fields: [userId], references: [id])
   emailId     String?  @unique
+
+  @@schema("public")
 }
 
 model Order {
@@ -153,6 +170,7 @@ model Order {
 
   @@index([status])
   @@index([createdAt])
+  @@schema("public")
 }
 
 model OrderItem {
@@ -166,6 +184,7 @@ model OrderItem {
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
+  @@schema("public")
 }
 
 model Measurement {
@@ -175,10 +194,13 @@ model Measurement {
   title        String?
   data         Json     // Nested structure: Floor -> Room -> Window
   images       String[] // URLs of uploaded measurement comments
+  referenceFiles Json?  // [{ name, url }] of uploaded reference PDFs/files
   notes        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   lead         Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@schema("public")
 }
 
 model Attachment {
@@ -187,6 +209,8 @@ model Attachment {
   mimeType  String
   data      Bytes
   createdAt DateTime @default(now())
+
+  @@schema("public")
 }
 
 model MonthlyBalance {
@@ -199,6 +223,7 @@ model MonthlyBalance {
   updatedAt        DateTime @updatedAt
 
   @@unique([month, year])
+  @@schema("public")
 }
 
 model WeeklyBankBalance {
@@ -212,4 +237,5 @@ model WeeklyBankBalance {
   updatedAt       DateTime @updatedAt
 
   @@unique([weekStart])
+  @@schema("public")
 }

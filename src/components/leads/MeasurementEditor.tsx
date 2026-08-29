@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { Plus, Trash2, ChevronDown, ChevronRight, Save, Camera, X, FileDown } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Save, Camera, X, FileDown, Undo2, Upload, Paperclip } from "lucide-react";
 import { saveMeasurement } from "@/lib/actions/measurement-actions";
 import { getProducts } from "@/lib/actions/product-actions";
 import { getLeads } from "@/lib/actions/lead-actions";
@@ -64,6 +64,7 @@ interface MeasurementEditorProps {
     initialNotes?: string;
     initialTitle?: string;
     initialCustomerName?: string;
+    initialReferenceFiles?: { name: string; url: string }[];
 }
 
 export function MeasurementEditor({
@@ -72,10 +73,13 @@ export function MeasurementEditor({
     initialData,
     initialNotes,
     initialTitle,
-    initialCustomerName
+    initialCustomerName,
+    initialReferenceFiles
 }: MeasurementEditorProps) {
     const router = useRouter();
-    const [floors, setFloors] = useState<Floor[]>(initialData?.floors || []);
+    const [floors, setFloorsState] = useState<Floor[]>(initialData?.floors || []);
+    const [floorsHistory, setFloorsHistory] = useState<Floor[][]>([]);
+    const [panelWidth, setPanelWidth] = useState<string>(initialData?.panelWidth?.toString() || "18");
     const [notes, setNotes] = useState(initialNotes || "");
     const [title, setTitle] = useState(initialTitle || "");
     const [customerName, setCustomerName] = useState(initialCustomerName || "");
@@ -87,6 +91,149 @@ export function MeasurementEditor({
     const [leads, setLeads] = useState<any[]>([]);
     const [selectedLeadId, setSelectedLeadId] = useState<string>(leadId || "");
     const [showNewLeadForm, setShowNewLeadForm] = useState(false);
+    const [referenceFiles, setReferenceFiles] = useState<{ name: string; url: string }[]>(initialReferenceFiles || []);
+    const [uploadingFile, setUploadingFile] = useState(false);
+
+    // Every edit to `floors` goes through here so it can be undone. Keeps a
+    // capped history of prior snapshots (not a redo stack - undo only).
+    const setFloors = (update: Floor[] | ((prev: Floor[]) => Floor[])) => {
+        setFloorsState(prev => {
+            const next = typeof update === 'function' ? (update as (p: Floor[]) => Floor[])(prev) : update;
+            setFloorsHistory(h => [...h.slice(-49), prev]);
+            return next;
+        });
+    };
+
+    const undo = () => {
+        setFloorsHistory(h => {
+            if (h.length === 0) return h;
+            const previous = h[h.length - 1];
+            setFloorsState(previous);
+            return h.slice(0, -1);
+        });
+    };
+
+    const handleReferenceFileUpload = async (file: File) => {
+        setUploadingFile(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            const data = await res.json();
+            if (data.success) {
+                setReferenceFiles(prev => [...prev, { name: file.name, url: data.url }]);
+            } else {
+                alert("Failed to upload file: " + (data.details || data.error));
+            }
+        } catch (error) {
+            alert("Error uploading file");
+        } finally {
+            setUploadingFile(false);
+        }
+    };
+
+    const removeReferenceFile = (url: string) => {
+        setReferenceFiles(prev => prev.filter(f => f.url !== url));
+    };
+
+    // Three-tier import: (1) our own PDFs carry their floors/notes/title data
+    // hidden in the PDF metadata - re-uploading one restores the sheet
+    // exactly. (2) If that marker is missing (metadata stripped by WhatsApp,
+    // an older export, etc.), fall back to a best-effort text-layout parser
+    // tailored to this app's own table format. (3) For anything else - a
+    // different PDF layout, or a photo/screenshot of a table - fall back to
+    // AI extraction, which only recovers name/type/width/height/notes, so
+    // quantity/fabric/track are then computed from width via calculateValues.
+    const [importingPdf, setImportingPdf] = useState(false);
+
+    // Recompute quantity/fabric/track for freshly-imported items that only
+    // have width/height/type set (AI-extracted rooms).
+    const recalculateImportedFloors = (floors: Floor[]): Floor[] =>
+        floors.map(floor => ({
+            ...floor,
+            rooms: floor.rooms.map(room => ({
+                ...room,
+                items: room.items.map(item =>
+                    item.type === 'Curtain' ? calculateValues(item, 'width', item.width) : item
+                )
+            }))
+        }));
+
+    const handleImportMeasurementPdf = async (file: File) => {
+        setImportingPdf(true);
+        try {
+            if (file.type === "application/pdf") {
+                const text = await file.text();
+                const match = text.match(/CPW_DATA_START:([A-Za-z0-9+/=]+):CPW_DATA_END/);
+
+                if (match) {
+                    const jsonStr = decodeURIComponent(escape(atob(match[1])));
+                    const payload = JSON.parse(jsonStr);
+
+                    if (!confirm("Importing this PDF will replace the current floors, notes, and title with the data stored in it. This can be undone. Continue?")) {
+                        return;
+                    }
+
+                    setFloors(payload.data?.floors || []);
+                    if (payload.data?.panelWidth) setPanelWidth(payload.data.panelWidth.toString());
+                    setNotes(payload.notes || "");
+                    if (!leadId) {
+                        setTitle(payload.title || "");
+                        if (!selectedLeadId) setCustomerName(payload.customerName || "");
+                    }
+                    return;
+                }
+
+                // Tier 2: no embedded marker, try reading the visible table
+                // text (best effort, only works for this app's own layout).
+                const formData = new FormData();
+                formData.append("file", file);
+                const res = await fetch("/api/parse-measurement-pdf", { method: "POST", body: formData });
+                const result = await res.json();
+
+                if (result.success && result.itemCount > 0) {
+                    const warningText = result.warnings?.length ? `\n\nNotes:\n- ${result.warnings.join("\n- ")}` : "";
+                    if (!confirm(
+                        `Read ${result.itemCount} window(s) from this PDF's visible text (no exact backup data was found, so some details like exact fabric/track figures or remarks may be missing or approximate). This will replace the current floors. Continue?${warningText}`
+                    )) {
+                        return;
+                    }
+                    setFloors(result.floors || []);
+                    return;
+                }
+            }
+
+            // Tier 3: AI extraction - handles PDFs in an unfamiliar layout
+            // and photos/screenshots of a table. Not free (API call).
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch("/api/ai-parse-measurement", { method: "POST", body: formData });
+            const result = await res.json();
+
+            if (!result.success) {
+                alert(`Couldn't read this file: ${result.error || "unknown error"}${result.details ? `\n\n${result.details}` : ""}`);
+                return;
+            }
+            if (result.itemCount === 0) {
+                alert("The AI couldn't find any recognizable window/measurement rows in this file.");
+                return;
+            }
+
+            const unitNoteText = result.unitNote ? `\n\nNote: ${result.unitNote}` : "";
+            if (!confirm(
+                `Read ${result.itemCount} window(s) using AI (this file isn't in this app's own format, so widths/heights were read from the table but quantity/fabric/track will be recalculated from scratch, and product/track selections won't carry over). This will replace the current floors. Continue?${unitNoteText}`
+            )) {
+                return;
+            }
+
+            setFloors(recalculateImportedFloors(result.floors || []));
+        } catch (error) {
+            console.error("Failed to import measurement document:", error);
+            alert("Failed to read measurement data from this file.");
+        } finally {
+            setImportingPdf(false);
+        }
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -166,6 +313,7 @@ export function MeasurementEditor({
         const newItem = { ...item, [field]: value };
         const width = parseFloat(newItem.width) || 0;
         const height = parseFloat(newItem.height) || 0;
+        const panelCoverage = parseFloat(panelWidth) || 18;
 
         if (field === 'trackRequired' && value === false) {
             newItem.trackProduct = undefined;
@@ -173,10 +321,21 @@ export function MeasurementEditor({
             newItem.sheerTrackProduct = undefined;
         }
 
+        // When sheer is turned on, carry over the main curtain's values so it
+        // starts identical (width, height, quantity) instead of blank/qty=1.
+        if (field === 'sheerRequired' && value === true) {
+            newItem.sheerWidth = newItem.width;
+            newItem.sheerHeight = newItem.height;
+            newItem.sheerQuantity = newItem.quantity;
+            if (!newItem.sheerTrackProduct && newItem.trackProduct) {
+                newItem.sheerTrackProduct = newItem.trackProduct;
+            }
+        }
+
         if (newItem.type === "Curtain") {
             // Curtain Calculations
             if (field === 'width' || field === 'type') {
-                newItem.quantity = Math.ceil(width / 18).toString();
+                newItem.quantity = Math.ceil(width / panelCoverage).toString();
             }
 
             // Fabric required: ((Height + 15) / 39) * Quantity
@@ -213,7 +372,7 @@ export function MeasurementEditor({
                     const sHeight = parseFloat(newItem.sheerHeight || newItem.height) || 0;
 
                     if (field === 'sheerWidth' || field === 'type' || field === 'width') {
-                        newItem.sheerQuantity = Math.ceil(sWidth / 18).toString();
+                        newItem.sheerQuantity = Math.ceil(sWidth / panelCoverage).toString();
                     }
 
                     const sQty = parseFloat(newItem.sheerQuantity || "1") || 1;
@@ -260,6 +419,19 @@ export function MeasurementEditor({
             newItem.quantity = "1";
         }
         return newItem;
+    };
+
+    // Recompute every curtain's quantity/fabric/track using the current panelWidth
+    const applyPanelWidthToAll = () => {
+        setFloors(prevFloors => prevFloors.map(floor => ({
+            ...floor,
+            rooms: floor.rooms.map(room => ({
+                ...room,
+                items: room.items.map(item =>
+                    item.type === 'Curtain' ? calculateValues(item, 'width', item.width) : item
+                )
+            }))
+        })));
     };
 
     const addItem = (floorId: string, roomId: string) => {
@@ -453,7 +625,8 @@ export function MeasurementEditor({
         const result = await saveMeasurement({
             id: measurementId,
             leadId: selectedLeadId || leadId || null,
-            data: { floors },
+            data: { floors, panelWidth: parseFloat(panelWidth) || 18 },
+            referenceFiles,
             notes,
             customerName: finalCustomerName,
             title
@@ -483,6 +656,16 @@ export function MeasurementEditor({
                 </div>
                 <div className="flex gap-2">
                     <Button
+                        variant="outline"
+                        onClick={undo}
+                        disabled={floorsHistory.length === 0}
+                        title="Undo last change"
+                        className="gap-2"
+                    >
+                        <Undo2 className="h-4 w-4" />
+                        Undo
+                    </Button>
+                    <Button
                         onClick={handleSave}
                         disabled={loading}
                         className="w-full sm:w-auto gap-2 bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95"
@@ -490,6 +673,102 @@ export function MeasurementEditor({
                         <Save className="h-4 w-4" />
                         {loading ? "Saving..." : "Save Changes"}
                     </Button>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap items-end gap-3 p-3 border rounded-md bg-zinc-50">
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                        Curtain Coverage per Panel (inches)
+                    </label>
+                    <Input
+                        type="number"
+                        value={panelWidth}
+                        onChange={(e) => setPanelWidth(e.target.value)}
+                        className="h-9 w-28"
+                    />
+                </div>
+                <Button
+                    variant="outline"
+                    onClick={applyPanelWidthToAll}
+                    className="h-9"
+                >
+                    Apply to Whole Sheet
+                </Button>
+                <p className="text-xs text-muted-foreground pb-2">
+                    Recalculates every curtain&apos;s quantity, fabric &amp; track using this coverage. Default: 18&quot;.
+                </p>
+            </div>
+
+            <div className="p-3 border rounded-md bg-zinc-50 space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                    Import Measurement PDF / Photo
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                    <input
+                        type="file"
+                        accept="application/pdf,image/png,image/jpeg,image/webp"
+                        id="import-measurement-pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImportMeasurementPdf(file);
+                            e.target.value = "";
+                        }}
+                    />
+                    <label
+                        htmlFor="import-measurement-pdf"
+                        className={`inline-flex items-center gap-1.5 text-sm border border-dashed rounded-md px-2.5 py-1.5 transition-colors text-zinc-600 ${importingPdf ? "opacity-50 pointer-events-none" : "cursor-pointer hover:bg-white"}`}
+                    >
+                        <Upload className="h-3.5 w-3.5" />
+                        {importingPdf ? "Reading..." : "Upload a PDF or Photo"}
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                        Re-uploading a PDF exported from this app restores the sheet exactly. Other PDFs or a photo/screenshot of a measurement table are read with AI (best effort - only widths/heights carry over; quantity/fabric/track are recalculated).
+                    </p>
+                </div>
+            </div>
+
+            <div className="p-3 border rounded-md bg-zinc-50 space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                    Reference Files
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                    {referenceFiles.map((file) => (
+                        <span
+                            key={file.url}
+                            className="inline-flex items-center gap-1.5 text-sm bg-white border rounded-md pl-2.5 pr-1.5 py-1"
+                        >
+                            <Paperclip className="h-3.5 w-3.5 text-zinc-400" />
+                            <a href={file.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-blue-700 max-w-[200px] truncate">
+                                {file.name}
+                            </a>
+                            <button
+                                onClick={() => removeReferenceFile(file.url)}
+                                className="p-0.5 hover:bg-red-100 rounded"
+                                title="Remove file"
+                            >
+                                <X className="h-3.5 w-3.5 text-red-500" />
+                            </button>
+                        </span>
+                    ))}
+                    <input
+                        type="file"
+                        id="reference-file-upload"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleReferenceFileUpload(file);
+                            e.target.value = "";
+                        }}
+                    />
+                    <label
+                        htmlFor="reference-file-upload"
+                        className="inline-flex items-center gap-1.5 text-sm border border-dashed rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-white transition-colors text-zinc-600"
+                    >
+                        <Upload className="h-3.5 w-3.5" />
+                        {uploadingFile ? "Uploading..." : "Upload PDF / File"}
+                    </label>
                 </div>
             </div>
 

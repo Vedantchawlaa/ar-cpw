@@ -50,6 +50,7 @@ export default async function MeasurementEditPage({ params }: PageProps) {
                         initialNotes={measurement?.notes || ""}
                         initialCustomerName={measurement?.customerName || ""}
                         initialTitle={measurement?.title || ""}
+                        initialReferenceFiles={measurement?.referenceFiles || []}
                     />
                 </TabsContent>
                 {measurement && (

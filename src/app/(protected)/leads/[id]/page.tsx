@@ -61,6 +61,7 @@ export default async function LeadDetailPage({ params }: PageProps) {
                         measurementId={measurement.data?.id}
                         initialData={measurement.data?.data}
                         initialNotes={measurement.data?.notes}
+                        initialReferenceFiles={measurement.data?.referenceFiles || []}
                     />
                 </TabsContent>
                 <TabsContent value="sizes" className="space-y-4">
