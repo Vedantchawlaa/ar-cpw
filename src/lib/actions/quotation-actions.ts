@@ -217,6 +217,7 @@ export async function updateQuotation(id: string, data: {
             });
 
             const updateData: any = {
+                leadId: data.leadId,
                 subtotal: data.subtotal,
                 tax: data.tax || 0,
                 discount: data.discount || 0,
