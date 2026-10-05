@@ -350,7 +350,11 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
             const grandFabricMeters = grandMainFabricMeters + grandSheerFabricMeters;
             const grandTrackFeet = grandMainTrackFeet + grandSheerTrackFeet;
             if (grandFabricMeters > 0 || grandBlindSqft > 0 || grandCurtainCount > 0 || grandTrackFeet > 0) {
-                if (yPos > 260) {
+                // Keep the whole block on one page - start a new page if it won't fit
+                const fabricLines = grandFabricMeters > 0 ? 1 + (grandMainFabricMeters > 0 ? 1 : 0) + (grandSheerFabricMeters > 0 ? 1 : 0) : 0;
+                const trackLines = grandTrackFeet > 0 ? 1 + (grandMainTrackFeet > 0 ? 1 : 0) + (grandSheerTrackFeet > 0 ? 1 : 0) : 0;
+                const totalLines = (grandBlindSqft > 0 ? 1 : 0) + (grandCurtainCount > 0 ? 1 : 0) + fabricLines + trackLines;
+                if (yPos + 12 + totalLines * 6 > 285) {
                     doc.addPage();
                     yPos = 20;
                 }
@@ -420,8 +424,15 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
                 yPos += 12;
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(9);
-                const splitNotes = doc.splitTextToSize(measurement.notes, pageWidth - 34);
-                doc.text(splitNotes, 17, yPos);
+                const splitNotes: string[] = doc.splitTextToSize(measurement.notes, pageWidth - 34);
+                splitNotes.forEach(line => {
+                    if (yPos > 285) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(line, 17, yPos);
+                    yPos += 4.5;
+                });
             }
 
             // Watermark - faint logo centered on every page, stamped last so it
