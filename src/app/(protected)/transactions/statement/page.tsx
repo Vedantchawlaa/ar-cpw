@@ -1,5 +1,5 @@
 import { getPnLStats, getTransactions } from "@/lib/actions/transaction-actions";
-import { TransactionList } from "@/components/transactions/TransactionList";
+import { StatementTable } from "@/components/transactions/StatementTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { TrendingUp, TrendingDown, DollarSign, ListFilter, ArrowLeft, Search } from "lucide-react";
 import { TransactionSearch } from "@/components/transactions/TransactionSearch";
@@ -48,7 +48,7 @@ export default async function StatementPage(props: {
     }
 
     const stats = await getPnLStats(dateFilter, search);
-    const transactions = await getTransactions(500, dateFilter, search); // High limit for statement
+    const transactions = await getTransactions(2000, dateFilter, search); // High limit for statement
 
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const currentViewLabel = range === "month"
@@ -130,7 +130,7 @@ export default async function StatementPage(props: {
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <TransactionList transactions={transactions} />
+                    <StatementTable transactions={transactions} />
                 </CardContent>
             </Card>
         </div>

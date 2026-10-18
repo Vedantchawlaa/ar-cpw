@@ -200,3 +200,95 @@ export async function deleteTransaction(id: string) {
         return { success: false, error: "Failed to delete" };
     }
 }
+
+const ImportRowSchema = z.object({
+    type: z.enum(["INCOME", "EXPENSE"]),
+    amount: z.coerce.number().positive("Amount must be positive"),
+    category: z.string().trim().min(1, "Category is required").max(60),
+    description: z.string().trim().max(500).optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+});
+
+// Saves rows reviewed in the "Import File" preview (CSV / Excel / PDF upload)
+export async function importTransactions(rows: unknown) {
+    const session = await auth();
+    if (!await isAdminUser()) {
+        return { success: false, error: "Unauthorized: Admin access required." };
+    }
+
+    const validated = z.array(ImportRowSchema).min(1, "Nothing to import").max(2000).safeParse(rows);
+    if (!validated.success) {
+        const issue = validated.error.issues[0];
+        const rowNumber = typeof issue.path[0] === "number" ? ` (row ${issue.path[0] + 1})` : "";
+        return { success: false, error: `Invalid input${rowNumber}: ${issue.message}` };
+    }
+
+    try {
+        const result = await db.transaction.createMany({
+            data: validated.data.map(row => ({
+                type: row.type,
+                amount: row.amount,
+                category: row.category,
+                description: row.description || null,
+                date: new Date(row.date),
+                userId: session?.user?.id,
+            })),
+        });
+
+        revalidatePath("/transactions");
+        return { success: true, count: result.count };
+    } catch (error) {
+        console.error("Failed to import transactions:", error);
+        return { success: false, error: "Failed to import transactions." };
+    }
+}
+
+const BulkIdsSchema = z.array(z.string().min(1)).min(1, "Nothing selected").max(2000);
+
+// Change type and/or category of many transactions at once (Full Statement page)
+export async function bulkUpdateTransactions(ids: unknown, changes: { type?: string; category?: string }) {
+    if (!await isAdminUser()) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    const validatedIds = BulkIdsSchema.safeParse(ids);
+    const validatedChanges = z.object({
+        type: z.enum(["INCOME", "EXPENSE"]).optional(),
+        category: z.string().trim().min(1).max(60).optional(),
+    }).safeParse(changes);
+    if (!validatedIds.success || !validatedChanges.success || (!validatedChanges.data.type && !validatedChanges.data.category)) {
+        return { success: false, error: "Invalid input" };
+    }
+
+    try {
+        const result = await db.transaction.updateMany({
+            where: { id: { in: validatedIds.data } },
+            data: validatedChanges.data,
+        });
+        revalidatePath("/transactions");
+        return { success: true, count: result.count };
+    } catch (error) {
+        console.error("Bulk update failed:", error);
+        return { success: false, error: "Failed to update transactions" };
+    }
+}
+
+export async function bulkDeleteTransactions(ids: unknown) {
+    if (!await isAdminUser()) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    const validatedIds = BulkIdsSchema.safeParse(ids);
+    if (!validatedIds.success) {
+        return { success: false, error: "Invalid input" };
+    }
+
+    try {
+        const result = await db.transaction.deleteMany({ where: { id: { in: validatedIds.data } } });
+        revalidatePath("/transactions");
+        return { success: true, count: result.count };
+    } catch (error) {
+        console.error("Bulk delete failed:", error);
+        return { success: false, error: "Failed to delete transactions" };
+    }
+}

@@ -113,7 +113,7 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
     );
 }
 
-function EditModal({ transaction, onClose, expenseCategories, incomeCategories }: {
+export function EditModal({ transaction, onClose, expenseCategories, incomeCategories }: {
     transaction: Transaction | null,
     onClose: () => void,
     expenseCategories: string[],
@@ -174,6 +174,10 @@ function EditModal({ transaction, onClose, expenseCategories, incomeCategories }
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             required
                         >
+                            {/* Imported rows can carry their own category - keep it selectable instead of silently changing it */}
+                            {![...incomeCategories, ...expenseCategories].includes(transaction.category) && (
+                                <option value={transaction.category}>{transaction.category}</option>
+                            )}
                             {(type === "INCOME" ? incomeCategories : expenseCategories).map((cat) => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}

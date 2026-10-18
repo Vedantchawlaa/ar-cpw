@@ -12,6 +12,7 @@ import { MonthFilter } from "@/components/transactions/MonthFilter";
 import { ExpensePieChart } from "@/components/transactions/ExpensePieChart";
 import { TransactionSearch } from "@/components/transactions/TransactionSearch";
 import { SyncButton } from "@/components/transactions/SyncButton";
+import { ImportTransactions } from "@/components/transactions/ImportTransactions";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { RealtimeListener } from "@/components/RealtimeListener";
@@ -115,6 +116,7 @@ export default async function TransactionsPage(props: {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                     <TransactionSearch />
                     <MonthFilter />
+                    <ImportTransactions />
                     <SyncButton />
                 </div>
             </div>

@@ -239,3 +239,54 @@ model WeeklyBankBalance {
   @@unique([weekStart])
   @@schema("public")
 }
+
+model Staff {
+  id            String            @id @default(uuid())
+  name          String
+  phone         String?
+  designation   String?
+  monthlySalary Float
+  shiftStart    String            @default("10:00") // HH:mm, India time
+  shiftEnd      String            @default("19:00")
+  joinedAt      DateTime          @db.Date
+  active        Boolean           @default(true)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  attendance    StaffAttendance[]
+  payments      StaffPayment[]
+
+  @@schema("public")
+}
+
+model StaffAttendance {
+  id        String   @id @default(uuid())
+  staffId   String
+  date      DateTime @db.Date
+  status    String   @default("PRESENT") // PRESENT, HALF_DAY, LEAVE (asked by staff, salary deducted), COMPANY_LEAVE (given by company, paid)
+  punchIn   String? // HH:mm, India time
+  punchOut  String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, date])
+  @@index([date])
+  @@schema("public")
+}
+
+model StaffPayment {
+  id        String   @id @default(uuid())
+  staffId   String
+  year      Int
+  month     Int // 1-12, the salary month this entry counts against
+  type      String   @default("PAYMENT") // PAYMENT (amount paid to staff), BONUS (added to that month's pay)
+  amount    Float
+  paidOn    DateTime @db.Date
+  note      String?
+  createdAt DateTime @default(now())
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, year, month])
+  @@schema("public")
+}
