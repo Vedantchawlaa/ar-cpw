@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { saveAttachment } from "@/lib/services/file-service";
 
 export async function POST(request: NextRequest) {
     try {
@@ -10,22 +10,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: "No file uploaded" }, { status: 400 });
         }
 
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
         // Save to database instead of filesystem
-        const attachment = await db.attachment.create({
-            data: {
-                filename: file.name,
-                mimeType: file.type || "application/octet-stream",
-                data: buffer,
-            },
-        });
+        const attachment = await saveAttachment(file);
 
         // Return URL to the serving API
         return NextResponse.json({
             success: true,
-            url: `/api/files/${attachment.id}`
+            url: attachment.url
         });
     } catch (error: any) {
         console.error("Error saving file to database:", error);

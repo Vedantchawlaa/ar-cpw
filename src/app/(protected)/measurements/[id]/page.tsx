@@ -59,6 +59,8 @@ export default async function MeasurementEditPage({ params }: PageProps) {
                             measurementId={measurement.id}
                             leadId={measurement.leadId}
                             initialData={measurement.data}
+                            customerName={measurement.customerName}
+                            title={measurement.title}
                         />
                     </TabsContent>
                 )}

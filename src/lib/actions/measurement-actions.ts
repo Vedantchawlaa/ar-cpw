@@ -1,14 +1,14 @@
 'use server';
 
-import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
+import * as measurementService from "@/lib/services/measurement-service";
+import { toActor } from "@/lib/services/types";
 
 // Fetch by Lead ID (for Lead Detail page)
 export async function getMeasurementByLeadId(leadId: string) {
     try {
-        const measurement = await (db as any).measurement.findUnique({
-            where: { leadId },
-        });
+        const measurement = await measurementService.getMeasurementByLeadId(leadId);
         return { success: true, data: measurement };
     } catch (error) {
         console.error("Failed to fetch measurement by lead:", error);
@@ -19,9 +19,7 @@ export async function getMeasurementByLeadId(leadId: string) {
 // Fetch by Measurement ID (for Standalone page)
 export async function getMeasurementById(id: string) {
     try {
-        const measurement = await (db as any).measurement.findUnique({
-            where: { id },
-        });
+        const measurement = await measurementService.getMeasurementById(id);
         return { success: true, data: measurement };
     } catch (error) {
         console.error("Failed to fetch measurement:", error);
@@ -32,10 +30,7 @@ export async function getMeasurementById(id: string) {
 // Fetch all measurements (for List page)
 export async function getAllMeasurements() {
     try {
-        const measurements = await (db as any).measurement.findMany({
-            orderBy: { updatedAt: 'desc' },
-            include: { lead: true }
-        });
+        const measurements = await measurementService.listMeasurements();
         return { success: true, data: measurements };
     } catch (error) {
         console.error("Failed to fetch measurements:", error);
@@ -44,67 +39,12 @@ export async function getAllMeasurements() {
 }
 
 // Unified Save Action
-export async function saveMeasurement(params: {
-    id?: string;
-    leadId?: string | null;
-    data: any;
-    notes?: string;
-    customerName?: string;
-    title?: string;
-    referenceFiles?: { name: string; url: string }[];
-}) {
+export async function saveMeasurement(params: measurementService.SaveMeasurementInput) {
     try {
-        const { id, leadId, data, notes, customerName, title, referenceFiles } = params;
-        let measurement;
-
-        if (id) {
-            // Update existing by ID
-            measurement = await (db as any).measurement.update({
-                where: { id },
-                data: {
-                    data,
-                    notes,
-                    customerName,
-                    title,
-                    referenceFiles,
-                    updatedAt: new Date(),
-                }
-            });
-        } else if (leadId) {
-            // Upsert by Lead ID
-            measurement = await (db as any).measurement.upsert({
-                where: { leadId },
-                update: {
-                    data,
-                    notes,
-                    referenceFiles,
-                    updatedAt: new Date(),
-                },
-                create: {
-                    leadId,
-                    data,
-                    notes,
-                    customerName,
-                    title,
-                    referenceFiles,
-                }
-            });
-        } else {
-            // Create new standalone
-            measurement = await (db as any).measurement.create({
-                data: {
-                    customerName,
-                    title,
-                    data,
-                    notes,
-                    images: [],
-                    referenceFiles,
-                }
-            });
-        }
+        const measurement = await measurementService.saveMeasurement(params);
 
         revalidatePath("/measurements");
-        if (leadId) revalidatePath(`/leads/${leadId}`);
+        if (params.leadId) revalidatePath(`/leads/${params.leadId}`);
 
         return { success: true, data: measurement };
     } catch (error: any) {
@@ -122,9 +62,7 @@ export async function saveMeasurementLegacy(leadId: string, data: any, notes?: s
 // Delete measurement
 export async function deleteMeasurement(id: string) {
     try {
-        await (db as any).measurement.delete({
-            where: { id }
-        });
+        await measurementService.deleteMeasurement(id);
 
         revalidatePath("/measurements");
         return { success: true };
@@ -136,151 +74,17 @@ export async function deleteMeasurement(id: string) {
 
 export async function generateQuotationFromMeasurement(measurementId: string) {
     try {
-        // Fetch measurement with lead data
-        const measurement = await (db as any).measurement.findUnique({
-            where: { id: measurementId },
-            include: { lead: true }
-        });
-
-        if (!measurement) {
-            return { success: false, error: "Measurement not found" };
-        }
-
-        if (!measurement.leadId) {
-            return { success: false, error: "Measurement must be associated with a lead" };
-        }
-
-        // Handle both string and object data formats
-        const data = typeof measurement.data === 'string'
-            ? JSON.parse(measurement.data)
-            : measurement.data;
-        const quotationItems: { description: string; quantity: number; rate: number; amount: number }[] = [];
-
-        // Process all floors and rooms
-        for (const floor of data.floors || []) {
-            for (const room of floor.rooms || []) {
-                for (const item of room.items || []) {
-                    // Process curtain items
-                    if (item.type === 'Curtain') {
-                        // Add fabric product
-                        if (item.fabricProduct) {
-                            const fabricProduct = await (db as any).product.findUnique({
-                                where: { id: item.fabricProduct }
-                            });
-                            if (fabricProduct) {
-                                const fabricQty = parseFloat(item.fabricRequired || "0");
-                                quotationItems.push({
-                                    description: `${fabricProduct.name} - ${item.name} (${room.name}, ${floor.name})`,
-                                    quantity: fabricQty,
-                                    rate: fabricProduct.rate,
-                                    amount: fabricQty * fabricProduct.rate
-                                });
-                            }
-                        }
-
-                        // Add track product if required
-                        if (item.trackRequired !== false && item.trackProduct) {
-                            const trackProduct = await (db as any).product.findUnique({
-                                where: { id: item.trackProduct }
-                            });
-                            if (trackProduct) {
-                                const trackInches = parseFloat(item.trackSize || "0");
-                                const trackFeet = Math.ceil(trackInches / 12); // Standard practice is to round up to nearest foot for billing
-                                quotationItems.push({
-                                    description: `${trackProduct.name} (${trackInches}") - ${item.name} (${room.name}, ${floor.name})`,
-                                    quantity: 1,
-                                    rate: trackProduct.rate,
-                                    amount: trackFeet * trackProduct.rate
-                                });
-                            }
-                        }
-
-                        // Process Sheer Curtain
-                        if (item.sheerRequired) {
-                            // Add sheer fabric product
-                            if (item.sheerFabricProduct) {
-                                const sheerFabricProd = await (db as any).product.findUnique({
-                                    where: { id: item.sheerFabricProduct }
-                                });
-                                if (sheerFabricProd) {
-                                    const sheerFabricQty = parseFloat(item.sheerFabricRequired || "0");
-                                    const sheerPanels = item.sheerQuantity || "1";
-                                    quotationItems.push({
-                                        description: `Sheer: ${sheerFabricProd.name} (${sheerPanels} panels) - ${item.name} (${room.name}, ${floor.name})`,
-                                        quantity: sheerFabricQty,
-                                        rate: sheerFabricProd.rate,
-                                        amount: sheerFabricQty * sheerFabricProd.rate
-                                    });
-                                }
-                            }
-
-                            // Add sheer track product if required (defaults to main track if not set)
-                            if (item.trackRequired !== false) {
-                                const sheerTrackId = item.sheerTrackProduct || item.trackProduct;
-                                if (sheerTrackId) {
-                                    const sheerTrackProd = await (db as any).product.findUnique({
-                                        where: { id: sheerTrackId }
-                                    });
-                                    if (sheerTrackProd) {
-                                        const trackInches = parseFloat(item.sheerTrackSize || item.trackSize || "0");
-                                        const trackFeet = Math.ceil(trackInches / 12);
-                                        quotationItems.push({
-                                            description: `Sheer Track: ${sheerTrackProd.name} (${trackInches}") - ${item.name} (${room.name}, ${floor.name})`,
-                                            quantity: 1,
-                                            rate: sheerTrackProd.rate,
-                                            amount: trackFeet * sheerTrackProd.rate
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Process blind items
-                    if (item.type === 'Blind' && item.blindProduct) {
-                        const blindProduct = await (db as any).product.findUnique({
-                            where: { id: item.blindProduct }
-                        });
-                        if (blindProduct) {
-                            const sqft = parseFloat(item.sqft || "0");
-                            quotationItems.push({
-                                description: `${blindProduct.name} (${item.width}x${item.height}) - ${item.name} (${room.name}, ${floor.name})`,
-                                quantity: sqft,
-                                rate: blindProduct.rate,
-                                amount: sqft * blindProduct.rate
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        if (quotationItems.length === 0) {
-            return { success: false, error: "No items with products selected found in measurement" };
-        }
-
-        // Calculate totals
-        const subtotal = quotationItems.reduce((sum, item) => sum + item.amount, 0);
-        const tax = 0; // Tax set to 0 by default
-        const total = subtotal + tax;
-
-        // Import and call createQuotation
-        const { createQuotation } = await import('./quotation-actions');
-        const result = await createQuotation({
-            leadId: measurement.leadId,
-            items: quotationItems,
-            subtotal,
-            tax,
-            discount: 0,
-            total
-        });
+        const session = await auth();
+        const result = await measurementService.generateQuotationFromMeasurement(
+            session?.user ? toActor(session.user) : null,
+            measurementId
+        );
 
         if (result.success) {
             revalidatePath("/quotations");
-            return { success: true, quotationId: result.data?.id };
-        } else {
-            return { success: false, error: result.error };
+            revalidatePath("/products");
         }
+        return result;
     } catch (error: any) {
         console.error("Failed to generate quotation:", error);
         return { success: false, error: error.message || "Failed to generate quotation" };
@@ -289,22 +93,8 @@ export async function generateQuotationFromMeasurement(measurementId: string) {
 
 export async function toggleVendorOrder(measurementId: string, type: 'tracks' | 'blinds' | 'curtains', isCompleted: boolean) {
     try {
-        const measurement = await (db as any).measurement.findUnique({
-            where: { id: measurementId }
-        });
-        if (!measurement) return { success: false, error: "Measurement not found" };
-
-        let data = typeof measurement.data === 'string' ? JSON.parse(measurement.data) : { ...measurement.data };
-        if (!data) data = {};
-        if (!data.sharedSizes) data.sharedSizes = {};
-        if (!data.sharedSizes.completed) data.sharedSizes.completed = { tracks: false, blinds: false, curtains: false };
-
-        data.sharedSizes.completed[type] = isCompleted;
-
-        await (db as any).measurement.update({
-            where: { id: measurementId },
-            data: { data }
-        });
+        const result = await measurementService.toggleVendorOrder(measurementId, type, isCompleted);
+        if (!result.success) return result;
 
         revalidatePath("/vendors");
         return { success: true };

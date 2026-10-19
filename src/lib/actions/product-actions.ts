@@ -5,6 +5,7 @@ import { Product } from "@/lib/types/quotation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { z } from "zod";
+import * as productService from "@/lib/services/product-service";
 
 const ReviewSchema = z.object({
     productId: z.string(),
@@ -15,14 +16,7 @@ const ReviewSchema = z.object({
 
 export async function getProducts() {
     try {
-        console.log("getProducts action called");
-        const products = await (prisma as any).product.findMany({
-            orderBy: { name: 'asc' }
-        });
-        console.log(`getProducts: Found ${products.length} products`);
-        if (products.length > 0) {
-            console.log(`getProducts: First product is ${products[0].name}`);
-        }
+        const products = await productService.listProducts();
         return { success: true, data: products as Product[] };
     } catch (error: any) {
         console.error("Failed to fetch products:", error);
@@ -33,11 +27,7 @@ export async function getProducts() {
 export async function upsertProduct(name: string, rate: number, stockQuantity: number = 0, category: string = "") {
     if (!name) return { success: false, error: "Name is required" };
     try {
-        await (prisma as any).product.upsert({
-            where: { name },
-            update: { rate, stockQuantity, category },
-            create: { name, rate, stockQuantity, category }
-        });
+        await productService.upsertProduct(name, rate, stockQuantity, category);
         revalidatePath("/products");
         revalidatePath("/quotations/new");
         revalidatePath("/stock");
@@ -50,10 +40,7 @@ export async function upsertProduct(name: string, rate: number, stockQuantity: n
 
 export async function updateProduct(id: string, data: { name: string; rate: number }) {
     try {
-        await (prisma as any).product.update({
-            where: { id },
-            data
-        });
+        await productService.updateProduct(id, data);
         return { success: true };
     } catch (error) {
         console.error("Failed to update product:", error);
@@ -63,9 +50,7 @@ export async function updateProduct(id: string, data: { name: string; rate: numb
 
 export async function deleteProduct(id: string) {
     try {
-        await (prisma as any).product.delete({
-            where: { id }
-        });
+        await productService.deleteProduct(id);
         return { success: true };
     } catch (error) {
         console.error("Failed to delete product:", error);

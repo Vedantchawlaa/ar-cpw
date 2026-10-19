@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -8,14 +8,18 @@ import { Save, FileDown, Loader2 } from "lucide-react";
 import { saveMeasurement } from "@/lib/actions/measurement-actions";
 import { getProducts } from "@/lib/actions/product-actions";
 import { useRouter } from "next/navigation";
+import { TrackCuttingPlan } from "@/components/leads/TrackCuttingPlan";
+import { DEFAULT_TRACK_CUTTING_SETTINGS, TrackCuttingSettings, optimizeTrackCutting } from "@/lib/track-optimizer";
+import { drawTrackCuttingPlan } from "@/lib/track-cutting-pdf";
 
-export function SizesToShare({ leadId, measurementId, initialData }: any) {
+export function SizesToShare({ leadId, measurementId, initialData, customerName, title }: any) {
     const router = useRouter();
     const floors = initialData?.floors || [];
     
     const [vendors, setVendors] = useState(initialData?.sharedSizes?.vendors || { tracks: "", blinds: "", curtains: "" });
     const [itemSpecs, setItemSpecs] = useState<Record<string, { finials: number, endcaps: number, motors: number, customFabric?: string, shadeDetails?: string, customVendor?: string }>>(initialData?.sharedSizes?.itemSpecs || {});
     const [fabricComments, setFabricComments] = useState<Record<string, string>>(initialData?.sharedSizes?.fabricComments || {});
+    const [trackCutting, setTrackCutting] = useState<TrackCuttingSettings>({ ...DEFAULT_TRACK_CUTTING_SETTINGS, ...(initialData?.sharedSizes?.trackCutting || {}) });
     const [loading, setLoading] = useState(false);
     const [loadingPdf, setLoadingPdf] = useState<string | null>(null);
     const [productMap, setProductMap] = useState<Record<string, string>>({});
@@ -101,6 +105,20 @@ export function SizesToShare({ leadId, measurementId, initialData }: any) {
         });
     });
 
+    // Cutting plan works on the final (after deduction) track sizes
+    const cutPiecesKey = JSON.stringify(trackItems.map(item => {
+        const specs = itemSpecs[item.id] || { finials: 0, endcaps: 0, motors: 0 };
+        const finalSize = item.size - ((specs.finials || 0) * 3) - ((specs.endcaps || 0) * 0.5) - ((specs.motors || 0) * 3);
+        return {
+            label: `${item.room} > ${item.name.replace(/ \((Main|Sheer) Track\)$/, '')} ${item.type === 'main' ? 'Main' : 'Sheer'}`,
+            length: parseFloat(finalSize.toFixed(2))
+        };
+    }));
+    const cuttingPlan = useMemo(
+        () => optimizeTrackCutting(JSON.parse(cutPiecesKey), trackCutting),
+        [cutPiecesKey, trackCutting]
+    );
+
     // Group curtains by fabric
     const curtainsByFabric: Record<string, typeof curtainItems> = {};
     let grandTotalCurtains = 0;
@@ -132,7 +150,7 @@ export function SizesToShare({ leadId, measurementId, initialData }: any) {
 
     const handleSave = async () => {
         setLoading(true);
-        const newData = { ...initialData, sharedSizes: { vendors, itemSpecs, fabricComments } };
+        const newData = { ...initialData, sharedSizes: { ...initialData?.sharedSizes, vendors, itemSpecs, fabricComments, trackCutting } };
         
         const result = await saveMeasurement({
             id: measurementId,
@@ -217,8 +235,11 @@ export function SizesToShare({ leadId, measurementId, initialData }: any) {
                             ];
                         }),
                         theme: 'grid',
-                        headStyles: { fillColor: [41, 128, 185] }
+                        headStyles: { fillColor: [41, 128, 185] },
+                        margin: { left: 15, right: 15, bottom: 15 }
                     });
+
+                    drawTrackCuttingPlan(doc, autoTable, cuttingPlan, { clientName: customerName || title, logoData });
                 } else if (type === 'Curtains') {
                     doc.setFontSize(12);
                     doc.setFont("helvetica", "bold");
@@ -426,6 +447,16 @@ export function SizesToShare({ leadId, measurementId, initialData }: any) {
                     )}
                 </CardContent>
             </Card>
+
+            {trackItems.length > 0 && (
+                <TrackCuttingPlan
+                    plan={cuttingPlan}
+                    settings={trackCutting}
+                    onSettingsChange={setTrackCutting}
+                    onDownload={(e) => downloadPDF('Tracks', e)}
+                    downloading={loadingPdf === 'Tracks'}
+                />
+            )}
 
             {/* BLINDS SECTION */}
             <Card>
