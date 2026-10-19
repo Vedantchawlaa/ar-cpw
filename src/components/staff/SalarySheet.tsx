@@ -34,7 +34,7 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
     const next = shiftMonth(year, month, 1);
     const totals = rows.reduce(
         (acc, r) => ({
-            salary: acc.salary + r.staff.monthlySalary,
+            salary: acc.salary + r.summary.baseSalary,
             deduction: acc.deduction + r.summary.deduction,
             otPay: acc.otPay + r.summary.otPay,
             sundayPay: acc.sundayPay + r.summary.sundayPay,
@@ -98,7 +98,14 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                             <Link href={`/staff/${staff.id}?month=${monthParam}`} className="font-medium text-slate-900 hover:underline">{staff.name}</Link>
                                             {!staff.active && <span className="ml-2 text-[11px] text-slate-400">(inactive)</span>}
                                         </td>
-                                        <td className="px-3 py-3 text-right tabular-nums">{formatRupees(staff.monthlySalary)}</td>
+                                        <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
+                                            {formatRupees(summary.baseSalary)}
+                                            {summary.payableDays < summary.daysInMonth && (
+                                                <div className="text-[11px] text-slate-500" title={`Joined ${staff.joinedAt}; monthly salary ${formatRupees(staff.monthlySalary)}`}>
+                                                    {summary.payableDays}/{summary.daysInMonth} days
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-3 py-3 text-center tabular-nums">{summary.present}</td>
                                         <td className="px-3 py-3 text-center tabular-nums">{summary.halfDays}</td>
                                         <td className="px-3 py-3 text-center tabular-nums text-red-600">{summary.leaves}</td>

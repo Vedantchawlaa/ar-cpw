@@ -33,6 +33,8 @@ export interface AttendanceDay {
 export interface SalarySummary {
     daysInMonth: number;
     perDay: number;
+    payableDays: number; // days employed this month (from the joining date to month end)
+    baseSalary: number; // perDay × payableDays; the full salary unless they joined this month
     present: number;
     halfDays: number;
     leaves: number;
@@ -45,7 +47,7 @@ export interface SalarySummary {
     otPay: number;
     sundaysWorked: number;
     sundayPay: number;
-    netSalary: number; // salary − deduction + OT pay + Sunday extra
+    netSalary: number; // base salary − deduction + OT pay + Sunday extra
     workedMinutes: number;
 }
 
@@ -171,6 +173,7 @@ function defaultOtRate(perDay: number, overtime: OvertimeSettings): number {
 
 /**
  * Salary for one month. Pay per day = monthly salary / days in that month.
+ * In the joining month, salary covers only the days from `joinedAt` to month end; earlier records are ignored.
  * LEAVE deducts a full day, HALF_DAY half a day; PRESENT and COMPANY_LEAVE are paid.
  * Unmarked days (counted between `countFrom` and `countTo`, inclusive) are reported but not deducted.
  * Overtime (minutes after shift end on PRESENT / HALF_DAY days) is paid per hour and added to net salary.
@@ -181,13 +184,14 @@ export function calculateMonthlySalary(
     year: number,
     month: number,
     records: AttendanceDay[],
-    range?: { countFrom?: string; countTo?: string },
+    range?: { countFrom?: string; countTo?: string; joinedAt?: string },
     overtime?: OvertimeSettings
 ): SalarySummary {
     const totalDays = daysInMonth(year, month);
     const perDay = monthlySalary / totalDays;
     const keys = monthDateKeys(year, month);
-    const byDate = new Map(records.filter(r => keys.includes(r.date)).map(r => [r.date, r]));
+    const employedKeys = range?.joinedAt ? keys.filter(k => k >= range.joinedAt!) : keys;
+    const byDate = new Map(records.filter(r => employedKeys.includes(r.date)).map(r => [r.date, r]));
 
     let present = 0, halfDays = 0, leaves = 0, companyLeaves = 0, deductedDays = 0, worked = 0, otMinutes = 0, sundaysWorked = 0;
     for (const record of byDate.values()) {
@@ -208,6 +212,8 @@ export function calculateMonthlySalary(
     const to = range?.countTo ?? keys[keys.length - 1];
     const unmarked = keys.filter(k => k >= from && k <= to && !byDate.has(k) && !isSunday(k)).length;
 
+    const payableDays = employedKeys.length;
+    const baseSalary = payableDays === totalDays ? monthlySalary : round2(perDay * payableDays);
     const deduction = round2(perDay * deductedDays);
     const otRatePerHour = overtime ? round2(overtime.ratePerHour ?? defaultOtRate(perDay, overtime)) : 0;
     const otPay = round2((otMinutes / 60) * otRatePerHour);
@@ -215,6 +221,8 @@ export function calculateMonthlySalary(
     return {
         daysInMonth: totalDays,
         perDay: round2(perDay),
+        payableDays,
+        baseSalary,
         present,
         halfDays,
         leaves,
@@ -227,7 +235,7 @@ export function calculateMonthlySalary(
         otPay,
         sundaysWorked,
         sundayPay,
-        netSalary: round2(monthlySalary - deduction + otPay + sundayPay),
+        netSalary: round2(baseSalary - deduction + otPay + sundayPay),
         workedMinutes: worked,
     };
 }

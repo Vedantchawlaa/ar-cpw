@@ -116,3 +116,19 @@ test("working on a Sunday earns an extra half day", () => {
     assert.equal(summary.deduction, 1500);
     assert.equal(summary.netSalary, 30000 - 1500 + 1000);
 });
+
+test("joining mid-month: salary only from the joining date to month end", () => {
+    // October 2026 has 31 days; ₹31,000 → ₹1,000/day. Joined on the 18th → 14 days.
+    const summary = calculateMonthlySalary(31000, 2026, 10, [
+        { date: "2026-10-10", status: "LEAVE" },   // before joining: ignored
+        { date: "2026-10-20", status: "LEAVE" },   // −1 day
+    ], { joinedAt: "2026-10-18" });
+    assert.equal(summary.payableDays, 14);
+    assert.equal(summary.baseSalary, 14000);
+    assert.equal(summary.leaves, 1);
+    assert.equal(summary.netSalary, 13000);
+
+    const fullMonth = calculateMonthlySalary(31000, 2026, 10, [], { joinedAt: "2025-01-01" });
+    assert.equal(fullMonth.payableDays, 31);
+    assert.equal(fullMonth.baseSalary, 31000);
+});

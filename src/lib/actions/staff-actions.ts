@@ -301,7 +301,7 @@ function overtimeSettings(s: StaffMember) {
 function countRange(joinedAt: string, year: number, month: number, today: string) {
     const first = `${monthKey(year, month)}-01`;
     const last = `${monthKey(year, month)}-${String(daysInMonth(year, month)).padStart(2, "0")}`;
-    return { countFrom: joinedAt > first ? joinedAt : first, countTo: today < last ? today : last };
+    return { countFrom: joinedAt > first ? joinedAt : first, countTo: today < last ? today : last, joinedAt };
 }
 
 /** Salary for every staff member employed during the month (active, or with attendance in it). */

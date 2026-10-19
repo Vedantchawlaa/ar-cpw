@@ -84,6 +84,10 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
                 <Card>
                     <CardContent className="p-5 space-y-2 text-sm">
                         <Row label="Monthly salary" value={formatRupees(staff.monthlySalary)} />
+                        {summary.payableDays < summary.daysInMonth && (
+                            <Row label={`Salary for ${summary.payableDays} of ${summary.daysInMonth} days (joined ${staff.joinedAt})`}
+                                value={formatRupees(summary.baseSalary)} className="font-medium" />
+                        )}
                         <Row label={`Per day (÷ ${summary.daysInMonth})`} value={formatRupees(summary.perDay)} />
                         <Row label={`Deduction (${summary.deductedDays} days)`} value={summary.deduction > 0 ? `− ${formatRupees(summary.deduction)}` : "—"} className="text-red-600" />
                         <Row label={`OT ${formatMinutes(summary.otMinutes)} × ${formatRupees(summary.otRatePerHour)}/h${staff.otRatePerHour == null ? " (auto)" : ""}`}
