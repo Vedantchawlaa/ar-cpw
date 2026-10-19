@@ -43,7 +43,9 @@ export default async function StaffPage({ searchParams }: PageProps) {
             <p className="text-xs text-slate-500">
                 Pay per day = monthly salary ÷ days in the month. <b>Leave</b> (asked by staff) deducts a full day and <b>Half day</b> deducts half.
                 {" "}<b>Company leave</b> is paid. Unmarked days are not deducted.
-                {" "}Total pay = salary − deduction + <b>bonus</b>; Balance = total pay − amounts <b>paid</b>.
+                {" "}<b>OT</b> = time after shift end × OT rate (set per staff, or pay per day ÷ shift hours).
+                {" "}Working on a <b>Sunday</b> earns an extra half day; unmarked Sundays are the weekly off.
+                {" "}Total pay = salary − deduction + OT + Sunday extra + <b>bonus</b>; Balance = total pay − amounts <b>paid</b>.
             </p>
         </div>
     );

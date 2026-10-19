@@ -29,6 +29,7 @@ export function StaffFormDialog({ staff, defaultJoinedAt }: StaffFormDialogProps
             monthlySalary: String(form.get("monthlySalary") ?? ""),
             shiftStart: String(form.get("shiftStart") ?? ""),
             shiftEnd: String(form.get("shiftEnd") ?? ""),
+            otRatePerHour: String(form.get("otRatePerHour") ?? ""),
             joinedAt: String(form.get("joinedAt") ?? ""),
         };
 
@@ -61,7 +62,7 @@ export function StaffFormDialog({ staff, defaultJoinedAt }: StaffFormDialogProps
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{staff ? "Edit staff" : "Add staff"}</DialogTitle>
-                        <DialogDescription>Salary is monthly. Shift times are used to flag late punch-ins.</DialogDescription>
+                        <DialogDescription>Salary is monthly. Shift times flag late punch-ins and count overtime after shift end.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="grid gap-4">
                         <Field label="Name">
@@ -91,6 +92,10 @@ export function StaffFormDialog({ staff, defaultJoinedAt }: StaffFormDialogProps
                                 <Input name="shiftEnd" type="time" required defaultValue={staff?.shiftEnd ?? "19:00"} />
                             </Field>
                         </div>
+                        <Field label="OT rate per hour (₹)">
+                            <Input name="otRatePerHour" type="number" min="0" step="0.01" placeholder="Auto: pay per day ÷ shift hours"
+                                defaultValue={staff?.otRatePerHour ?? ""} />
+                        </Field>
                         <DialogFooter className="gap-2">
                             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
                             <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save"}</Button>

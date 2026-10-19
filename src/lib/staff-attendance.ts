@@ -20,6 +20,9 @@ const DEDUCTED_DAYS: Record<AttendanceStatus, number> = {
 
 export const BUSINESS_TIME_ZONE = "Asia/Kolkata";
 
+/** Extra pay, in days, for working on a Sunday (the weekly off). */
+export const SUNDAY_EXTRA_DAYS = 0.5;
+
 export interface AttendanceDay {
     date: string; // YYYY-MM-DD
     status: string;
@@ -37,8 +40,20 @@ export interface SalarySummary {
     unmarked: number;
     deductedDays: number;
     deduction: number;
-    netSalary: number;
+    otMinutes: number;
+    otRatePerHour: number;
+    otPay: number;
+    sundaysWorked: number;
+    sundayPay: number;
+    netSalary: number; // salary − deduction + OT pay + Sunday extra
     workedMinutes: number;
+}
+
+export interface OvertimeSettings {
+    shiftStart: string;
+    shiftEnd: string;
+    /** Fixed ₹ per OT hour; when empty, pay per day ÷ shift hours is used. */
+    ratePerHour?: number | null;
 }
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -71,6 +86,12 @@ export function lateMinutes(punchIn: string | null | undefined, shiftStart: stri
     return Math.max(0, timeToMinutes(punchIn) - timeToMinutes(shiftStart));
 }
 
+/** Minutes worked after the shift ended (0 if they left on time or have not punched out). */
+export function overtimeMinutes(punchOut: string | null | undefined, shiftEnd: string): number {
+    if (!punchOut || !isValidTime(punchOut) || !isValidTime(shiftEnd)) return 0;
+    return Math.max(0, timeToMinutes(punchOut) - timeToMinutes(shiftEnd));
+}
+
 export function formatMinutes(total: number): string {
     const h = Math.floor(total / 60);
     const m = total % 60;
@@ -80,6 +101,15 @@ export function formatMinutes(total: number): string {
 export function daysInMonth(year: number, month: number): number {
     // month is 1-12
     return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+export function isSunday(key: string): boolean {
+    return dateKeyToDate(key).getUTCDay() === 0;
+}
+
+/** Whether this day earns the Sunday extra: worked (present or half day) on a Sunday. */
+export function earnsSundayExtra(date: string, status: string | null | undefined): boolean {
+    return (status === "PRESENT" || status === "HALF_DAY") && isSunday(date);
 }
 
 export function dateKeyToDate(key: string): Date {
@@ -134,24 +164,32 @@ function round2(n: number): number {
     return Math.round(n * 100) / 100;
 }
 
+function defaultOtRate(perDay: number, overtime: OvertimeSettings): number {
+    const shiftMinutes = workedMinutes(overtime.shiftStart, overtime.shiftEnd);
+    return shiftMinutes ? perDay / (shiftMinutes / 60) : 0;
+}
+
 /**
  * Salary for one month. Pay per day = monthly salary / days in that month.
  * LEAVE deducts a full day, HALF_DAY half a day; PRESENT and COMPANY_LEAVE are paid.
  * Unmarked days (counted between `countFrom` and `countTo`, inclusive) are reported but not deducted.
+ * Overtime (minutes after shift end on PRESENT / HALF_DAY days) is paid per hour and added to net salary.
+ * Working on a Sunday (PRESENT / HALF_DAY) earns an extra half day's pay; unmarked Sundays are the weekly off.
  */
 export function calculateMonthlySalary(
     monthlySalary: number,
     year: number,
     month: number,
     records: AttendanceDay[],
-    range?: { countFrom?: string; countTo?: string }
+    range?: { countFrom?: string; countTo?: string },
+    overtime?: OvertimeSettings
 ): SalarySummary {
     const totalDays = daysInMonth(year, month);
     const perDay = monthlySalary / totalDays;
     const keys = monthDateKeys(year, month);
     const byDate = new Map(records.filter(r => keys.includes(r.date)).map(r => [r.date, r]));
 
-    let present = 0, halfDays = 0, leaves = 0, companyLeaves = 0, deductedDays = 0, worked = 0;
+    let present = 0, halfDays = 0, leaves = 0, companyLeaves = 0, deductedDays = 0, worked = 0, otMinutes = 0, sundaysWorked = 0;
     for (const record of byDate.values()) {
         const status = record.status as AttendanceStatus;
         if (status === "PRESENT") present++;
@@ -159,14 +197,21 @@ export function calculateMonthlySalary(
         else if (status === "LEAVE") leaves++;
         else if (status === "COMPANY_LEAVE") companyLeaves++;
         deductedDays += DEDUCTED_DAYS[status] ?? 0;
+        if (earnsSundayExtra(record.date, status)) sundaysWorked++;
         worked += workedMinutes(record.punchIn, record.punchOut) ?? 0;
+        if (overtime && (status === "PRESENT" || status === "HALF_DAY") && workedMinutes(record.punchIn, record.punchOut) !== null) {
+            otMinutes += overtimeMinutes(record.punchOut, overtime.shiftEnd);
+        }
     }
 
     const from = range?.countFrom ?? keys[0];
     const to = range?.countTo ?? keys[keys.length - 1];
-    const unmarked = keys.filter(k => k >= from && k <= to && !byDate.has(k)).length;
+    const unmarked = keys.filter(k => k >= from && k <= to && !byDate.has(k) && !isSunday(k)).length;
 
     const deduction = round2(perDay * deductedDays);
+    const otRatePerHour = overtime ? round2(overtime.ratePerHour ?? defaultOtRate(perDay, overtime)) : 0;
+    const otPay = round2((otMinutes / 60) * otRatePerHour);
+    const sundayPay = round2(perDay * SUNDAY_EXTRA_DAYS * sundaysWorked);
     return {
         daysInMonth: totalDays,
         perDay: round2(perDay),
@@ -177,7 +222,12 @@ export function calculateMonthlySalary(
         unmarked,
         deductedDays,
         deduction,
-        netSalary: round2(monthlySalary - deduction),
+        otMinutes,
+        otRatePerHour,
+        otPay,
+        sundaysWorked,
+        sundayPay,
+        netSalary: round2(monthlySalary - deduction + otPay + sundayPay),
         workedMinutes: worked,
     };
 }

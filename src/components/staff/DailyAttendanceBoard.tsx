@@ -82,6 +82,7 @@ export function DailyAttendanceBoard({ date, today, month, rows }: DailyAttendan
                                 date={date}
                                 record={record}
                                 shiftStart={staff.shiftStart}
+                                shiftEnd={staff.shiftEnd}
                                 allowPunchNow={date === today}
                                 title={<Link href={`/staff/${staff.id}?month=${month}`} className="hover:underline">{staff.name}</Link>}
                                 subtitle={`${staff.designation ? `${staff.designation} · ` : ""}Shift ${staff.shiftStart}–${staff.shiftEnd}`}

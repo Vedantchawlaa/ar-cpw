@@ -248,6 +248,7 @@ model Staff {
   monthlySalary Float
   shiftStart    String            @default("10:00") // HH:mm, India time
   shiftEnd      String            @default("19:00")
+  otRatePerHour Float? // ₹ per overtime hour; empty = pay per day ÷ shift hours
   joinedAt      DateTime          @db.Date
   active        Boolean           @default(true)
   createdAt     DateTime          @default(now())
