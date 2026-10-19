@@ -8,6 +8,7 @@ import {
     isValidDateKey,
     salaryBalance,
     lateMinutes,
+    overtimeMinutes,
     shiftMonth,
     workedMinutes,
 } from "./staff-attendance.ts";
@@ -48,7 +49,7 @@ test("records from other months are ignored and unmarked days are counted only i
 
     assert.equal(summary.leaves, 0);
     assert.equal(summary.deduction, 0);
-    assert.equal(summary.unmarked, 4);
+    assert.equal(summary.unmarked, 3); // Oct 2, 3, 5 (Sunday Oct 4 is the weekly off)
 });
 
 test("worked and late minutes", () => {
@@ -78,4 +79,56 @@ test("bonus adds to pay, payments reduce the balance", () => {
         { bonus: 2000, paid: 25000, totalPay: 30500, balance: 5500 }
     );
     assert.equal(salaryBalance(10000, [{ type: "PAYMENT", amount: 12000 }]).balance, -2000);
+});
+
+test("overtime: minutes after shift end, paid at the default or a fixed hourly rate", () => {
+    assert.equal(overtimeMinutes("20:30", "19:00"), 90);
+    assert.equal(overtimeMinutes("18:30", "19:00"), 0);
+
+    const records = [
+        { date: "2026-09-01", status: "PRESENT", punchIn: "10:00", punchOut: "20:30" }, // 90 min OT
+        { date: "2026-09-02", status: "PRESENT", punchIn: "10:00", punchOut: "19:30" }, // 30 min OT
+        { date: "2026-09-03", status: "PRESENT", punchIn: "10:00" },                     // no punch out: no OT
+        { date: "2026-09-04", status: "LEAVE" },
+    ];
+    // ₹30,000 in a 30-day month = ₹1,000/day; 9-hour shift → ₹111.11/hour
+    const auto = calculateMonthlySalary(30000, 2026, 9, records, undefined, { shiftStart: "10:00", shiftEnd: "19:00" });
+    assert.equal(auto.otMinutes, 120);
+    assert.equal(auto.otRatePerHour, 111.11);
+    assert.equal(auto.otPay, 222.22);
+    assert.equal(auto.netSalary, 30000 - 1000 + 222.22);
+
+    const fixed = calculateMonthlySalary(30000, 2026, 9, records, undefined, { shiftStart: "10:00", shiftEnd: "19:00", ratePerHour: 150 });
+    assert.equal(fixed.otPay, 300);
+    assert.equal(fixed.netSalary, 29300);
+});
+
+test("working on a Sunday earns an extra half day", () => {
+    // September 2026: Sundays are the 6th, 13th, 20th, 27th. ₹30,000 / 30 days = ₹1,000/day.
+    const summary = calculateMonthlySalary(30000, 2026, 9, [
+        { date: "2026-09-06", status: "PRESENT" },  // +0.5 day
+        { date: "2026-09-13", status: "HALF_DAY" }, // −0.5 day, +0.5 day
+        { date: "2026-09-20", status: "LEAVE" },    // −1 day, no extra
+        { date: "2026-09-07", status: "PRESENT" },  // Monday: nothing extra
+    ]);
+    assert.equal(summary.sundaysWorked, 2);
+    assert.equal(summary.sundayPay, 1000);
+    assert.equal(summary.deduction, 1500);
+    assert.equal(summary.netSalary, 30000 - 1500 + 1000);
+});
+
+test("joining mid-month: salary only from the joining date to month end", () => {
+    // October 2026 has 31 days; ₹31,000 → ₹1,000/day. Joined on the 18th → 14 days.
+    const summary = calculateMonthlySalary(31000, 2026, 10, [
+        { date: "2026-10-10", status: "LEAVE" },   // before joining: ignored
+        { date: "2026-10-20", status: "LEAVE" },   // −1 day
+    ], { joinedAt: "2026-10-18" });
+    assert.equal(summary.payableDays, 14);
+    assert.equal(summary.baseSalary, 14000);
+    assert.equal(summary.leaves, 1);
+    assert.equal(summary.netSalary, 13000);
+
+    const fullMonth = calculateMonthlySalary(31000, 2026, 10, [], { joinedAt: "2025-01-01" });
+    assert.equal(fullMonth.payableDays, 31);
+    assert.equal(fullMonth.baseSalary, 31000);
 });

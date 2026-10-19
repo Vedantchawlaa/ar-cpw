@@ -45,8 +45,9 @@ const StaffSchema = z.object({
     monthlySalary: z.coerce.number().min(0, "Salary cannot be negative"),
     shiftStart: time,
     shiftEnd: time,
+    otRatePerHour: z.union([z.literal("").transform(() => null), z.null(), z.coerce.number().min(0, "OT rate cannot be negative")]).optional().transform(v => v ?? null),
     joinedAt: dateKey,
-});
+}).refine(s => s.shiftEnd > s.shiftStart, { message: "Shift end must be after shift start" });
 
 export type StaffInput = z.input<typeof StaffSchema>;
 
@@ -65,7 +66,8 @@ function firstError(error: z.ZodError) {
 
 function revalidateStaff(staffId?: string) {
     revalidatePath("/staff");
-    if (staffId) revalidatePath(`/staff/${staffId}`);
+    revalidatePath("/attendance");
+    if (staffId) revalidatePath(`/attendance/${staffId}`);
 }
 
 export async function createStaff(input: StaffInput) {
@@ -113,11 +115,38 @@ export async function setStaffActive(id: string, active: boolean) {
     }
 }
 
+/** Permanently deletes a staff member with all their attendance, payments and bonuses. */
+export async function deleteStaff(id: string) {
+    if (!await isAdminUser()) return UNAUTHORIZED;
+    try {
+        await db.staff.delete({ where: { id } });
+        revalidateStaff(id);
+        return { success: true as const };
+    } catch (error) {
+        console.error("Failed to delete staff:", error);
+        return { success: false as const, error: "Failed to delete staff member." };
+    }
+}
+
+/** Everyone, active first, with how much history each has (shown before deleting). */
+export async function getAllStaff() {
+    if (!await isAdminUser()) return [];
+    const staff = await db.staff.findMany({
+        include: { _count: { select: { attendance: true, payments: true } } },
+        orderBy: [{ active: "desc" }, { name: "asc" }],
+    });
+    return staff.map(s => ({
+        staff: serializeStaff(s),
+        attendanceCount: s._count.attendance,
+        paymentCount: s._count.payments,
+    }));
+}
+
 function serializeRecord(r: { date: Date; status: string; punchIn: string | null; punchOut: string | null; note: string | null }) {
     return { date: toDateKey(r.date), status: r.status, punchIn: r.punchIn, punchOut: r.punchOut, note: r.note };
 }
 
-function serializeStaff(s: { id: string; name: string; phone: string | null; designation: string | null; monthlySalary: number; shiftStart: string; shiftEnd: string; joinedAt: Date; active: boolean }) {
+function serializeStaff(s: { id: string; name: string; phone: string | null; designation: string | null; monthlySalary: number; shiftStart: string; shiftEnd: string; otRatePerHour: number | null; joinedAt: Date; active: boolean }) {
     return {
         id: s.id,
         name: s.name,
@@ -126,6 +155,7 @@ function serializeStaff(s: { id: string; name: string; phone: string | null; des
         monthlySalary: s.monthlySalary,
         shiftStart: s.shiftStart,
         shiftEnd: s.shiftEnd,
+        otRatePerHour: s.otRatePerHour,
         joinedAt: toDateKey(s.joinedAt),
         active: s.active,
     };
@@ -292,10 +322,14 @@ function serializePayment(p: { id: string; type: string; amount: number; paidOn:
 
 export type StaffPaymentRecord = ReturnType<typeof serializePayment>;
 
+function overtimeSettings(s: StaffMember) {
+    return { shiftStart: s.shiftStart, shiftEnd: s.shiftEnd, ratePerHour: s.otRatePerHour };
+}
+
 function countRange(joinedAt: string, year: number, month: number, today: string) {
     const first = `${monthKey(year, month)}-01`;
     const last = `${monthKey(year, month)}-${String(daysInMonth(year, month)).padStart(2, "0")}`;
-    return { countFrom: joinedAt > first ? joinedAt : first, countTo: today < last ? today : last };
+    return { countFrom: joinedAt > first ? joinedAt : first, countTo: today < last ? today : last, joinedAt };
 }
 
 /** Salary for every staff member employed during the month (active, or with attendance in it). */
@@ -323,7 +357,7 @@ export async function getSalarySheet(year: number, month: number) {
 
     return staff.map(s => {
         const member = serializeStaff(s);
-        const summary = calculateMonthlySalary(s.monthlySalary, year, month, s.attendance.map(serializeRecord), countRange(member.joinedAt, year, month, today));
+        const summary = calculateMonthlySalary(s.monthlySalary, year, month, s.attendance.map(serializeRecord), countRange(member.joinedAt, year, month, today), overtimeSettings(member));
         return { staff: member, summary, ...salaryBalance(summary.netSalary, s.payments) };
     });
 }
@@ -344,7 +378,7 @@ export async function getStaffMonth(staffId: string, year: number, month: number
 
     const member = serializeStaff(staff);
     const records = staff.attendance.map(serializeRecord);
-    const summary = calculateMonthlySalary(staff.monthlySalary, year, month, records, countRange(member.joinedAt, year, month, businessNow().date));
+    const summary = calculateMonthlySalary(staff.monthlySalary, year, month, records, countRange(member.joinedAt, year, month, businessNow().date), overtimeSettings(member));
     return {
         staff: member,
         records,

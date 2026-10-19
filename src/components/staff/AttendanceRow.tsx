@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { clearAttendance, punchNow, saveAttendance, type AttendanceRecord } from "@/lib/actions/staff-actions";
-import { ATTENDANCE_STATUSES, STATUS_LABELS, formatMinutes, lateMinutes, workedMinutes, type AttendanceStatus } from "@/lib/staff-attendance";
+import { ATTENDANCE_STATUSES, STATUS_LABELS, earnsSundayExtra, formatMinutes, lateMinutes, overtimeMinutes, workedMinutes, type AttendanceStatus } from "@/lib/staff-attendance";
 
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
     PRESENT: "bg-green-50 text-green-700 border-green-200",
@@ -27,13 +27,14 @@ interface AttendanceRowProps {
     date: string;
     record: AttendanceRecord | null;
     shiftStart: string;
+    shiftEnd: string;
     title: React.ReactNode;
     subtitle?: React.ReactNode;
     /** Show the one-tap "punch now" buttons (today only). */
     allowPunchNow?: boolean;
 }
 
-export function AttendanceRow({ staffId, date, record, shiftStart, title, subtitle, allowPunchNow }: AttendanceRowProps) {
+export function AttendanceRow({ staffId, date, record, shiftStart, shiftEnd, title, subtitle, allowPunchNow }: AttendanceRowProps) {
     const router = useRouter();
     const [status, setStatus] = useState<string>(record?.status ?? "");
     const [punchIn, setPunchIn] = useState(record?.punchIn ?? "");
@@ -50,6 +51,9 @@ export function AttendanceRow({ staffId, date, record, shiftStart, title, subtit
 
     const late = lateMinutes(record?.punchIn, shiftStart);
     const worked = workedMinutes(record?.punchIn, record?.punchOut);
+    const overtime = worked !== null && (record?.status === "PRESENT" || record?.status === "HALF_DAY")
+        ? overtimeMinutes(record.punchOut, shiftEnd)
+        : 0;
 
     const run = async (action: () => Promise<{ success: boolean; error?: string }>, successMessage: string) => {
         setBusy(true);
@@ -117,6 +121,8 @@ export function AttendanceRow({ staffId, date, record, shiftStart, title, subtit
                     )}
                     {late > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">Late {formatMinutes(late)}</span>}
                     {worked !== null && <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{formatMinutes(worked)}</span>}
+                    {earnsSundayExtra(date, record?.status) && <span className="text-[11px] px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">Sunday +½ day</span>}
+                    {overtime > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">OT {formatMinutes(overtime)}</span>}
                 </div>
             </div>
 

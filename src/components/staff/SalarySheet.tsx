@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import type { StaffMember } from "@/lib/actions/staff-actions";
 import { PaymentDialog } from "./PaymentDialog";
-import { monthKey, shiftMonth, type SalarySummary } from "@/lib/staff-attendance";
+import { formatMinutes, monthKey, shiftMonth, type SalarySummary } from "@/lib/staff-attendance";
 
 export function formatRupees(amount: number) {
     return amount.toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
@@ -34,14 +34,16 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
     const next = shiftMonth(year, month, 1);
     const totals = rows.reduce(
         (acc, r) => ({
-            salary: acc.salary + r.staff.monthlySalary,
+            salary: acc.salary + r.summary.baseSalary,
             deduction: acc.deduction + r.summary.deduction,
+            otPay: acc.otPay + r.summary.otPay,
+            sundayPay: acc.sundayPay + r.summary.sundayPay,
             bonus: acc.bonus + r.bonus,
             totalPay: acc.totalPay + r.totalPay,
             paid: acc.paid + r.paid,
             balance: acc.balance + r.balance,
         }),
-        { salary: 0, deduction: 0, bonus: 0, totalPay: 0, paid: 0, balance: 0 }
+        { salary: 0, deduction: 0, otPay: 0, sundayPay: 0, bonus: 0, totalPay: 0, paid: 0, balance: 0 }
     );
     const monthName = monthLabel(year, month);
     const monthParam = monthKey(year, month);
@@ -54,11 +56,11 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                         <IndianRupee className="h-5 w-5 text-slate-500" /> Salary sheet
                     </CardTitle>
                     <div className="flex items-center gap-1">
-                        <Link href={`/staff?date=${date}&month=${monthKey(prev.year, prev.month)}`}>
+                        <Link href={`/attendance?date=${date}&month=${monthKey(prev.year, prev.month)}`}>
                             <Button variant="ghost" size="icon" aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></Button>
                         </Link>
                         <span className="text-sm font-medium w-36 text-center">{monthName}</span>
-                        <Link href={`/staff?date=${date}&month=${monthKey(next.year, next.month)}`}>
+                        <Link href={`/attendance?date=${date}&month=${monthKey(next.year, next.month)}`}>
                             <Button variant="ghost" size="icon" aria-label="Next month"><ChevronRight className="h-4 w-4" /></Button>
                         </Link>
                     </div>
@@ -80,8 +82,10 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                     <th className="text-center font-medium px-3 py-3" title="Company leave — paid">Co. leave</th>
                                     <th className="text-center font-medium px-3 py-3" title="Days so far with no entry — not deducted">Unmarked</th>
                                     <th className="text-right font-medium px-3 py-3">Deduction</th>
+                                    <th className="text-right font-medium px-3 py-3" title="Overtime after shift end">OT</th>
+                                    <th className="text-right font-medium px-3 py-3" title="Extra half day for each Sunday worked">Sunday</th>
                                     <th className="text-right font-medium px-3 py-3">Bonus</th>
-                                    <th className="text-right font-medium px-3 py-3" title="Salary − deduction + bonus">Total pay</th>
+                                    <th className="text-right font-medium px-3 py-3" title="Salary − deduction + OT + Sunday + bonus">Total pay</th>
                                     <th className="text-right font-medium px-3 py-3">Paid</th>
                                     <th className="text-right font-medium px-3 py-3">Balance</th>
                                     <th className="px-4 py-3"><span className="sr-only">Actions</span></th>
@@ -91,16 +95,33 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                 {rows.map(({ staff, summary, bonus, totalPay, paid, balance }) => (
                                     <tr key={staff.id} className="hover:bg-slate-50/50">
                                         <td className="px-4 py-3">
-                                            <Link href={`/staff/${staff.id}?month=${monthParam}`} className="font-medium text-slate-900 hover:underline">{staff.name}</Link>
+                                            <Link href={`/attendance/${staff.id}?month=${monthParam}`} className="font-medium text-slate-900 hover:underline">{staff.name}</Link>
                                             {!staff.active && <span className="ml-2 text-[11px] text-slate-400">(inactive)</span>}
                                         </td>
-                                        <td className="px-3 py-3 text-right tabular-nums">{formatRupees(staff.monthlySalary)}</td>
+                                        <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
+                                            {formatRupees(summary.baseSalary)}
+                                            {summary.payableDays < summary.daysInMonth && (
+                                                <div className="text-[11px] text-slate-500" title={`Joined ${staff.joinedAt}; monthly salary ${formatRupees(staff.monthlySalary)}`}>
+                                                    {summary.payableDays}/{summary.daysInMonth} days
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-3 py-3 text-center tabular-nums">{summary.present}</td>
                                         <td className="px-3 py-3 text-center tabular-nums">{summary.halfDays}</td>
                                         <td className="px-3 py-3 text-center tabular-nums text-red-600">{summary.leaves}</td>
                                         <td className="px-3 py-3 text-center tabular-nums text-blue-600">{summary.companyLeaves}</td>
                                         <td className="px-3 py-3 text-center tabular-nums text-slate-400">{summary.unmarked}</td>
                                         <td className="px-3 py-3 text-right tabular-nums text-red-600">{summary.deduction > 0 ? `− ${formatRupees(summary.deduction)}` : "—"}</td>
+                                        <td className="px-3 py-3 text-right tabular-nums text-indigo-700 whitespace-nowrap">
+                                            {summary.otMinutes > 0 ? (
+                                                <>+ {formatRupees(summary.otPay)}<div className="text-[11px] text-slate-500">{formatMinutes(summary.otMinutes)}</div></>
+                                            ) : "—"}
+                                        </td>
+                                        <td className="px-3 py-3 text-right tabular-nums text-teal-700 whitespace-nowrap">
+                                            {summary.sundaysWorked > 0 ? (
+                                                <>+ {formatRupees(summary.sundayPay)}<div className="text-[11px] text-slate-500">{summary.sundaysWorked} Sun</div></>
+                                            ) : "—"}
+                                        </td>
                                         <td className="px-3 py-3 text-right tabular-nums text-purple-700">{bonus > 0 ? `+ ${formatRupees(bonus)}` : "—"}</td>
                                         <td className="px-3 py-3 text-right tabular-nums font-semibold">{formatRupees(totalPay)}</td>
                                         <td className="px-3 py-3 text-right tabular-nums text-green-700">{paid > 0 ? formatRupees(paid) : "—"}</td>
@@ -120,6 +141,8 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                     <td className="px-3 py-3 text-right tabular-nums">{formatRupees(totals.salary)}</td>
                                     <td colSpan={5} />
                                     <td className="px-3 py-3 text-right tabular-nums text-red-600">{totals.deduction > 0 ? `− ${formatRupees(totals.deduction)}` : "—"}</td>
+                                    <td className="px-3 py-3 text-right tabular-nums text-indigo-700">{totals.otPay > 0 ? `+ ${formatRupees(totals.otPay)}` : "—"}</td>
+                                    <td className="px-3 py-3 text-right tabular-nums text-teal-700">{totals.sundayPay > 0 ? `+ ${formatRupees(totals.sundayPay)}` : "—"}</td>
                                     <td className="px-3 py-3 text-right tabular-nums text-purple-700">{totals.bonus > 0 ? `+ ${formatRupees(totals.bonus)}` : "—"}</td>
                                     <td className="px-3 py-3 text-right tabular-nums">{formatRupees(totals.totalPay)}</td>
                                     <td className="px-3 py-3 text-right tabular-nums text-green-700">{formatRupees(totals.paid)}</td>

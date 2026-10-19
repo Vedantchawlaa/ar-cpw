@@ -42,13 +42,15 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
         { label: "Company leave", value: summary.companyLeaves, className: "text-blue-600" },
         { label: "Unmarked", value: summary.unmarked, className: "text-slate-400" },
         { label: "Hours worked", value: formatMinutes(summary.workedMinutes) },
+        { label: "Overtime", value: formatMinutes(summary.otMinutes), className: "text-indigo-700" },
+        { label: "Sundays worked", value: summary.sundaysWorked, className: "text-teal-700" },
     ];
 
     return (
         <div className="p-2 md:p-6 max-w-6xl mx-auto w-full space-y-6">
-            <Link href={`/staff?month=${monthKey(year, month)}`}>
+            <Link href={`/attendance?month=${monthKey(year, month)}`}>
                 <Button variant="ghost" size="sm" className="gap-2 text-slate-500 hover:text-slate-900 -ml-2">
-                    <ArrowLeft className="h-4 w-4" /> Back to Staff
+                    <ArrowLeft className="h-4 w-4" /> Back to Attendance
                 </Button>
             </Link>
 
@@ -59,7 +61,7 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
                         {!staff.active && <span className="ml-3 align-middle text-sm font-medium text-slate-400">Inactive</span>}
                     </h1>
                     <p className="text-slate-500 text-sm mt-1">
-                        {[staff.designation, staff.phone, `Shift ${staff.shiftStart}–${staff.shiftEnd}`, `Joined ${staff.joinedAt}`].filter(Boolean).join(" · ")}
+                        {[staff.designation, staff.phone, `Shift ${staff.shiftStart}–${staff.shiftEnd}`, staff.otRatePerHour != null && `OT ${formatRupees(staff.otRatePerHour)}/h`, `Joined ${staff.joinedAt}`].filter(Boolean).join(" · ")}
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -69,11 +71,11 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
             </div>
 
             <div className="flex items-center gap-1">
-                <Link href={`/staff/${id}?month=${monthKey(prev.year, prev.month)}`}>
+                <Link href={`/attendance/${id}?month=${monthKey(prev.year, prev.month)}`}>
                     <Button variant="ghost" size="icon" aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></Button>
                 </Link>
                 <span className="text-lg font-semibold w-44 text-center">{monthName}</span>
-                <Link href={`/staff/${id}?month=${monthKey(next.year, next.month)}`}>
+                <Link href={`/attendance/${id}?month=${monthKey(next.year, next.month)}`}>
                     <Button variant="ghost" size="icon" aria-label="Next month"><ChevronRight className="h-4 w-4" /></Button>
                 </Link>
             </div>
@@ -82,8 +84,16 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
                 <Card>
                     <CardContent className="p-5 space-y-2 text-sm">
                         <Row label="Monthly salary" value={formatRupees(staff.monthlySalary)} />
+                        {summary.payableDays < summary.daysInMonth && (
+                            <Row label={`Salary for ${summary.payableDays} of ${summary.daysInMonth} days (joined ${staff.joinedAt})`}
+                                value={formatRupees(summary.baseSalary)} className="font-medium" />
+                        )}
                         <Row label={`Per day (÷ ${summary.daysInMonth})`} value={formatRupees(summary.perDay)} />
                         <Row label={`Deduction (${summary.deductedDays} days)`} value={summary.deduction > 0 ? `− ${formatRupees(summary.deduction)}` : "—"} className="text-red-600" />
+                        <Row label={`OT ${formatMinutes(summary.otMinutes)} × ${formatRupees(summary.otRatePerHour)}/h${staff.otRatePerHour == null ? " (auto)" : ""}`}
+                            value={summary.otPay > 0 ? `+ ${formatRupees(summary.otPay)}` : "—"} className="text-indigo-700" />
+                        <Row label={`Sunday extra (${summary.sundaysWorked} × ½ day)`}
+                            value={summary.sundayPay > 0 ? `+ ${formatRupees(summary.sundayPay)}` : "—"} className="text-teal-700" />
                         <Row label="Bonus" value={bonus > 0 ? `+ ${formatRupees(bonus)}` : "—"} className="text-purple-700" />
                         <div className="border-t pt-2">
                             <Row label="Total pay" value={formatRupees(totalPay)} className="text-base font-bold" />
@@ -95,7 +105,7 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
                         </div>
                     </CardContent>
                 </Card>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {stats.map(s => (
                         <Card key={s.label}>
                             <CardContent className="p-4">
@@ -136,6 +146,7 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
                                         date={d}
                                         record={record}
                                         shiftStart={staff.shiftStart}
+                                        shiftEnd={staff.shiftEnd}
                                         allowPunchNow={d === today}
                                         title={label}
                                         subtitle={d === today ? "Today" : undefined}
