@@ -66,7 +66,8 @@ function firstError(error: z.ZodError) {
 
 function revalidateStaff(staffId?: string) {
     revalidatePath("/staff");
-    if (staffId) revalidatePath(`/staff/${staffId}`);
+    revalidatePath("/attendance");
+    if (staffId) revalidatePath(`/attendance/${staffId}`);
 }
 
 export async function createStaff(input: StaffInput) {
@@ -112,6 +113,33 @@ export async function setStaffActive(id: string, active: boolean) {
         console.error("Failed to change staff status:", error);
         return { success: false as const, error: "Failed to change staff status." };
     }
+}
+
+/** Permanently deletes a staff member with all their attendance, payments and bonuses. */
+export async function deleteStaff(id: string) {
+    if (!await isAdminUser()) return UNAUTHORIZED;
+    try {
+        await db.staff.delete({ where: { id } });
+        revalidateStaff(id);
+        return { success: true as const };
+    } catch (error) {
+        console.error("Failed to delete staff:", error);
+        return { success: false as const, error: "Failed to delete staff member." };
+    }
+}
+
+/** Everyone, active first, with how much history each has (shown before deleting). */
+export async function getAllStaff() {
+    if (!await isAdminUser()) return [];
+    const staff = await db.staff.findMany({
+        include: { _count: { select: { attendance: true, payments: true } } },
+        orderBy: [{ active: "desc" }, { name: "asc" }],
+    });
+    return staff.map(s => ({
+        staff: serializeStaff(s),
+        attendanceCount: s._count.attendance,
+        paymentCount: s._count.payments,
+    }));
 }
 
 function serializeRecord(r: { date: Date; status: string; punchIn: string | null; punchOut: string | null; note: string | null }) {

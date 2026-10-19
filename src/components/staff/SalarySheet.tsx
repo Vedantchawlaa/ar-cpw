@@ -56,11 +56,11 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                         <IndianRupee className="h-5 w-5 text-slate-500" /> Salary sheet
                     </CardTitle>
                     <div className="flex items-center gap-1">
-                        <Link href={`/staff?date=${date}&month=${monthKey(prev.year, prev.month)}`}>
+                        <Link href={`/attendance?date=${date}&month=${monthKey(prev.year, prev.month)}`}>
                             <Button variant="ghost" size="icon" aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></Button>
                         </Link>
                         <span className="text-sm font-medium w-36 text-center">{monthName}</span>
-                        <Link href={`/staff?date=${date}&month=${monthKey(next.year, next.month)}`}>
+                        <Link href={`/attendance?date=${date}&month=${monthKey(next.year, next.month)}`}>
                             <Button variant="ghost" size="icon" aria-label="Next month"><ChevronRight className="h-4 w-4" /></Button>
                         </Link>
                     </div>
@@ -95,7 +95,7 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                 {rows.map(({ staff, summary, bonus, totalPay, paid, balance }) => (
                                     <tr key={staff.id} className="hover:bg-slate-50/50">
                                         <td className="px-4 py-3">
-                                            <Link href={`/staff/${staff.id}?month=${monthParam}`} className="font-medium text-slate-900 hover:underline">{staff.name}</Link>
+                                            <Link href={`/attendance/${staff.id}?month=${monthParam}`} className="font-medium text-slate-900 hover:underline">{staff.name}</Link>
                                             {!staff.active && <span className="ml-2 text-[11px] text-slate-400">(inactive)</span>}
                                         </td>
                                         <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">

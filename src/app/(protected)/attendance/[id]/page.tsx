@@ -48,9 +48,9 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
 
     return (
         <div className="p-2 md:p-6 max-w-6xl mx-auto w-full space-y-6">
-            <Link href={`/staff?month=${monthKey(year, month)}`}>
+            <Link href={`/attendance?month=${monthKey(year, month)}`}>
                 <Button variant="ghost" size="sm" className="gap-2 text-slate-500 hover:text-slate-900 -ml-2">
-                    <ArrowLeft className="h-4 w-4" /> Back to Staff
+                    <ArrowLeft className="h-4 w-4" /> Back to Attendance
                 </Button>
             </Link>
 
@@ -71,11 +71,11 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
             </div>
 
             <div className="flex items-center gap-1">
-                <Link href={`/staff/${id}?month=${monthKey(prev.year, prev.month)}`}>
+                <Link href={`/attendance/${id}?month=${monthKey(prev.year, prev.month)}`}>
                     <Button variant="ghost" size="icon" aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></Button>
                 </Link>
                 <span className="text-lg font-semibold w-44 text-center">{monthName}</span>
-                <Link href={`/staff/${id}?month=${monthKey(next.year, next.month)}`}>
+                <Link href={`/attendance/${id}?month=${monthKey(next.year, next.month)}`}>
                     <Button variant="ghost" size="icon" aria-label="Next month"><ChevronRight className="h-4 w-4" /></Button>
                 </Link>
             </div>

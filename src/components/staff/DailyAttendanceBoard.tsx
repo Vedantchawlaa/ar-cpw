@@ -29,7 +29,7 @@ export function DailyAttendanceBoard({ date, today, month, rows }: DailyAttendan
     const present = rows.filter(r => r.record?.status === "PRESENT" || r.record?.status === "HALF_DAY").length;
 
     const changeDate = (value: string) => {
-        if (value) router.push(`/staff?date=${value}&month=${month}`);
+        if (value) router.push(`/attendance?date=${value}&month=${month}`);
     };
 
     const handleCompanyLeave = async () => {
@@ -71,7 +71,7 @@ export function DailyAttendanceBoard({ date, today, month, rows }: DailyAttendan
                 {rows.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-12 text-slate-500">
                         <Users className="h-10 w-10 mb-3 text-slate-300" />
-                        <p>No active staff on this date. Add staff to start tracking attendance.</p>
+                        <p>No active staff on this date. <Link href="/staff" className="underline">Add staff</Link> to start tracking attendance.</p>
                     </div>
                 ) : (
                     <div className="divide-y">
@@ -84,7 +84,7 @@ export function DailyAttendanceBoard({ date, today, month, rows }: DailyAttendan
                                 shiftStart={staff.shiftStart}
                                 shiftEnd={staff.shiftEnd}
                                 allowPunchNow={date === today}
-                                title={<Link href={`/staff/${staff.id}?month=${month}`} className="hover:underline">{staff.name}</Link>}
+                                title={<Link href={`/attendance/${staff.id}?month=${month}`} className="hover:underline">{staff.name}</Link>}
                                 subtitle={`${staff.designation ? `${staff.designation} · ` : ""}Shift ${staff.shiftStart}–${staff.shiftEnd}`}
                             />
                         ))}

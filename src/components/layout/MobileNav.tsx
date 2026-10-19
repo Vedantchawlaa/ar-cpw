@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Bell, LayoutDashboard, Users, FileText, Package, ShoppingBag, DollarSign, Settings, Smartphone, Ruler, Store, Clock } from "lucide-react";
+import { Menu, X, Bell, LayoutDashboard, Users, FileText, Package, ShoppingBag, DollarSign, Settings, Smartphone, Ruler, Store, Clock, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 
@@ -87,6 +87,12 @@ export function MobileNav({ role, userName, reminderCount = 0 }: MobileNavProps)
         },
         {
             href: "/staff",
+            icon: UserCog,
+            label: "Staff",
+            adminOnly: true,
+        },
+        {
+            href: "/attendance",
             icon: Clock,
             label: "Staff Attendance",
             adminOnly: true,

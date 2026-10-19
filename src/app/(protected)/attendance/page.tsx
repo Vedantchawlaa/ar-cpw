@@ -1,9 +1,10 @@
-import { Clock } from "lucide-react";
+import Link from "next/link";
+import { Clock, UserCog } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { getDailyAttendance, getSalarySheet } from "@/lib/actions/staff-actions";
 import { businessNow, isValidDateKey, monthKey, parseMonthKey } from "@/lib/staff-attendance";
 import { DailyAttendanceBoard } from "@/components/staff/DailyAttendanceBoard";
 import { SalarySheet } from "@/components/staff/SalarySheet";
-import { StaffFormDialog } from "@/components/staff/StaffFormDialog";
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ interface PageProps {
     searchParams: Promise<{ date?: string; month?: string }>;
 }
 
-export default async function StaffPage({ searchParams }: PageProps) {
+export default async function AttendancePage({ searchParams }: PageProps) {
     const params = await searchParams;
     const today = businessNow().date;
     const date = params.date && isValidDateKey(params.date) && params.date <= today ? params.date : today;
@@ -34,7 +35,9 @@ export default async function StaffPage({ searchParams }: PageProps) {
                         <p className="text-slate-500 text-sm">Punch in/out, leaves and monthly salary.</p>
                     </div>
                 </div>
-                <StaffFormDialog defaultJoinedAt={today} />
+                <Link href="/staff">
+                    <Button variant="outline" className="gap-2"><UserCog className="h-4 w-4" /> Manage staff</Button>
+                </Link>
             </div>
 
             <DailyAttendanceBoard date={date} today={today} month={monthKey(year, month)} rows={rows} />
