@@ -239,17 +239,26 @@ export async function markAsSale(actor: Actor, id: string) {
             }
         });
 
-        if (product) {
+        if (product && product.stockKind === 'ACCESSORY') {
             // Calculate new stock quantity (can go negative for backorders)
-            const newQuantity = product.stockQuantity - item.quantity;
+            const quantity = Math.round(item.quantity);
+            const newQuantity = product.stockQuantity - quantity;
 
-            // Update product stock
-            await (prisma as any).product.update({
-                where: { id: product.id },
-                data: { stockQuantity: newQuantity }
-            });
+            // Update product stock and record it in the stock history
+            await prisma.$transaction([
+                (prisma as any).product.update({
+                    where: { id: product.id },
+                    data: { stockQuantity: newQuantity }
+                }),
+                (prisma as any).stockMovement.create({
+                    data: { productId: product.id, type: 'USE', quantity: -quantity, note: `Sale ${quotation.number}`, userId: actor.id }
+                }),
+            ]);
 
             console.log(`✅ Stock updated for ${product.name}: ${product.stockQuantity} → ${newQuantity}`);
+        } else if (product) {
+            // Fabric and track stock is kept as pieces - those are booked from the Stock page or the track cutting plan
+            console.log(`ℹ️ ${product.name} is ${product.stockKind} stock, not deducted automatically`);
         } else {
             console.warn(`⚠️ Product not found in inventory: ${item.description}`);
         }

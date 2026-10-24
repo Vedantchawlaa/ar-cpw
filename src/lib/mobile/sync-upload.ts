@@ -5,6 +5,8 @@ import { Actor } from "@/lib/services/types";
 import * as leadService from "@/lib/services/lead-service";
 import * as quotationService from "@/lib/services/quotation-service";
 import * as measurementService from "@/lib/services/measurement-service";
+import * as stockService from "@/lib/services/stock-service";
+import { isAdmin } from "@/lib/services/types";
 
 // Applies the write queue of an offline client. Each entry is one row-level
 // change recorded by PowerSync on the device:
@@ -121,6 +123,27 @@ const MeasurementSchema = z.object({
     notes: nullableText(10000),
 }).partial();
 
+// Stock rows from the app. Pieces are only ever created from the device; every
+// other stock change arrives as a StockMovement row that the server books
+// (cut, remove, correct a piece, or add/use accessories).
+const StockPieceSchema = z.object({
+    productId: z.string().min(1),
+    length: num.refine(v => v > 0, "Length must be above zero"),
+    source: z.enum(["PURCHASE", "OFFCUT", "RETURN"]).catch("PURCHASE"),
+    note: nullableText(500).optional(),
+});
+
+const StockMovementSchema = z.object({
+    productId: z.string().min(1),
+    pieceId: z.string().nullish(),
+    type: z.enum(["ADD", "USE", "ADJUST", "DISCARD"]),
+    // REMOVE marks a piece taken out of stock without a job; the device stores it as ADJUST + this flag
+    action: z.enum(["CUT", "REMOVE", "CORRECT", "COUNT"]).optional(),
+    quantity: num,
+    note: nullableText(500).optional(),
+    measurementId: z.string().nullish(),
+});
+
 const firstIssue = (error: z.ZodError) => {
     const issue = error.issues[0];
     return issue ? `${issue.path.join(".") || "row"}: ${issue.message}` : "Invalid data";
@@ -194,7 +217,74 @@ async function applyMeasurement(_actor: Actor, op: SyncOp): Promise<Outcome> {
     return measurementService.upsertMeasurementRow(op.id, parsed.data);
 }
 
+const ADMIN_ONLY = "Only an admin can change stock";
+
+const ProductSchema = z.object({
+    name: text(200).min(1, "Name is required"),
+    stockKind: z.string(),
+    category: nullableText(100).optional(),
+    rate: num.optional(),
+    lowStockAt: z.preprocess(v => (v === "" || v === null || v === undefined ? null : v), num.nullable()).optional(),
+});
+
+async function applyProduct(actor: Actor, op: SyncOp): Promise<Outcome> {
+    if (!isAdmin(actor)) return rejected("Only an admin can add products");
+    if (op.op !== "PUT") return rejected("Products are edited on the website");
+
+    const parsed = ProductSchema.safeParse(op.data ?? {});
+    if (!parsed.success) return rejected(firstIssue(parsed.error));
+    return stockService.createProduct({ ...parsed.data, id: op.id });
+}
+
+async function applyStockPiece(actor: Actor, op: SyncOp): Promise<Outcome> {
+    if (!isAdmin(actor)) return rejected(ADMIN_ONLY);
+    if (op.op !== "PUT") return rejected("Stock pieces change through stock entries, not edits");
+
+    const parsed = StockPieceSchema.safeParse(op.data ?? {});
+    if (!parsed.success) return rejected(firstIssue(parsed.error));
+
+    return stockService.addPieces(actor, parsed.data.productId, [{ id: op.id, length: parsed.data.length }], {
+        source: parsed.data.source,
+        note: parsed.data.note,
+    });
+}
+
+async function applyStockMovement(actor: Actor, op: SyncOp): Promise<Outcome> {
+    if (!isAdmin(actor)) return rejected(ADMIN_ONLY);
+    if (op.op !== "PUT") return rejected("Stock history cannot be edited");
+
+    const parsed = StockMovementSchema.safeParse(op.data ?? {});
+    if (!parsed.success) return rejected(firstIssue(parsed.error));
+    const m = parsed.data;
+    const options = { movementId: op.id };
+
+    if (!m.pieceId) {
+        return stockService.adjustCount(actor, m.productId, Math.round(m.quantity), {
+            ...options, type: m.type, note: m.note, measurementId: m.measurementId,
+        });
+    }
+
+    switch (m.action ?? (m.type === "USE" ? "CUT" : "CORRECT")) {
+        case "CUT":
+            return stockService.cutPiece(actor, m.pieceId, Math.abs(m.quantity), {
+                ...options, note: m.note, measurementId: m.measurementId, discard: m.type === "DISCARD",
+            });
+        case "REMOVE":
+            return stockService.removePiece(actor, m.pieceId, m.note, options);
+        case "CORRECT": {
+            const piece = await db.stockPiece.findUnique({ where: { id: m.pieceId }, select: { length: true } });
+            if (!piece) return rejected("This piece is no longer in stock");
+            return stockService.updatePiece(actor, m.pieceId, { length: piece.length + m.quantity }, options);
+        }
+        default:
+            return rejected("Unknown stock change");
+    }
+}
+
 const HANDLERS: Record<string, (actor: Actor, op: SyncOp) => Promise<Outcome>> = {
+    Product: applyProduct,
+    StockPiece: applyStockPiece,
+    StockMovement: applyStockMovement,
     Lead: applyLead,
     Quotation: applyQuotation,
     QuotationItem: applyQuotationItem,

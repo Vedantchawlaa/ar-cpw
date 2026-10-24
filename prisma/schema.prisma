@@ -77,10 +77,48 @@ model Product {
   category      String   @default("")
   unit          String   @default("unit")
   rate          Float
-  stockQuantity Int      @default(0)
+  stockQuantity Int      @default(0) // ACCESSORY: count in hand. FABRIC/TRACK totals come from StockPiece.
+  stockKind     String   @default("ACCESSORY") // FABRIC (metres) | TRACK (inches) | ACCESSORY (nos) | OTHER (not stocked)
+  lowStockAt    Float? // alert when available stock falls below this, in the kind's base unit
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  stockPieces   StockPiece[]
+  stockMoves    StockMovement[]
 
+  @@schema("public")
+}
+
+// One physical fabric cut or track piece in the godown.
+model StockPiece {
+  id        String    @id @default(uuid())
+  productId String
+  length    Float // FABRIC: metres, TRACK: inches
+  status    String    @default("AVAILABLE") // AVAILABLE | USED
+  source    String    @default("PURCHASE") // PURCHASE | OFFCUT | RETURN
+  note      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  usedAt    DateTime?
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status])
+  @@schema("public")
+}
+
+// Every change to stock, for history. quantity is signed, in the product's base unit.
+model StockMovement {
+  id            String   @id @default(uuid())
+  productId     String
+  pieceId       String?
+  type          String // ADD | USE | DISCARD | ADJUST
+  quantity      Float
+  note          String?
+  userId        String?
+  measurementId String?
+  createdAt     DateTime @default(now())
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
   @@schema("public")
 }
 

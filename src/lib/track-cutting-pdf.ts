@@ -1,4 +1,5 @@
-import { CuttingPlan, formatInches, formatStockLength, purchaseSummary } from "@/lib/track-optimizer";
+import { type CuttingPlan, formatInches, formatStockLength, purchaseSummary, type ProductCuttingPlan, type StockAwarePlan } from "@/lib/track-optimizer";
+import { formatFeetInches } from "@/lib/stock-units";
 
 const MARGIN = 15; // mm, on every side
 const PAGE_W = 210;
@@ -12,13 +13,43 @@ const OFFCUT_COLOR: [number, number, number] = [221, 221, 221]; // #dddddd
 interface CuttingPlanPdfOptions {
     clientName?: string;
     logoData?: { base64: string, w: number, h: number } | null;
+    productNames?: Record<string, string>;
 }
 
-// Appends the "Track Cutting Plan" section to an existing jsPDF document.
-// Only the built-in Helvetica font is used, so the text is kept to characters it can render.
-export function drawTrackCuttingPlan(doc: any, autoTable: any, plan: CuttingPlan, options: CuttingPlanPdfOptions = {}) {
-    if (plan.bars.length === 0 && plan.oversized.length === 0) return;
+const groupLabel = (group: ProductCuttingPlan, productNames: Record<string, string>) =>
+    group.productId ? productNames[group.productId] || "Track" : "Track product not selected";
 
+const hasWork = (group: ProductCuttingPlan) => group.fromStock.length > 0 || group.plan.bars.length > 0 || group.plan.oversized.length > 0;
+
+// Appends the "Track Cutting Plan" to an existing jsPDF document: one section
+// per track product, each listing the stock pieces to cut first and then the
+// new bars.
+export function drawTrackCuttingPlan(doc: any, autoTable: any, result: StockAwarePlan, options: CuttingPlanPdfOptions = {}) {
+    const groups = result.groups.filter(hasWork);
+    if (groups.length === 0) return;
+
+    const productNames = options.productNames ?? {};
+    const purchase = groups
+        .filter(g => g.plan.totalBars > 0 || g.plan.oversized.length > 0)
+        .map(g => (groups.length > 1 ? `${groupLabel(g, productNames)}: ` : "") + purchaseSummary(g.plan, 'x'));
+
+    groups.forEach((group, index) => {
+        drawProductSection(doc, autoTable, group, {
+            ...options,
+            title: groups.length > 1 || group.productId ? groupLabel(group, productNames) : undefined,
+            purchaseLine: index === groups.length - 1 ? (purchase.length ? purchase.join("  |  ") : "none - stock covers everything") : null,
+        });
+    });
+}
+
+// Only the built-in Helvetica font is used, so the text is kept to characters it can render.
+function drawProductSection(
+    doc: any,
+    autoTable: any,
+    group: ProductCuttingPlan,
+    options: CuttingPlanPdfOptions & { title?: string; purchaseLine: string | null }
+) {
+    const plan: CuttingPlan = group.plan;
     const { clientName, logoData } = options;
     const stockLabel = `${formatStockLength(plan.stockLength)} = ${formatInches(plan.stockLength)}`;
 
@@ -27,7 +58,7 @@ export function drawTrackCuttingPlan(doc: any, autoTable: any, plan: CuttingPlan
     doc.setFont("helvetica", "normal");
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(16);
-    doc.text("Track Cutting Plan", MARGIN, 20);
+    doc.text(options.title ? `Track Cutting Plan - ${options.title}` : "Track Cutting Plan", MARGIN, 20);
 
     doc.setFontSize(9);
     doc.setTextColor(60, 60, 60);
@@ -36,6 +67,52 @@ export function drawTrackCuttingPlan(doc: any, autoTable: any, plan: CuttingPlan
     doc.text(headerLines, MARGIN, 28);
 
     let y = 28 + headerLines.length * 4 + 2;
+
+    if (group.fromStock.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(21, 101, 52);
+        doc.text("1. Cut from stock first", MARGIN, y + 2);
+        autoTable(doc, {
+            startY: y + 4,
+            margin: { left: MARGIN, right: MARGIN, top: MARGIN, bottom: MARGIN + FOOTER_SPACE },
+            head: [['Stock piece', 'Cut pieces', 'Used', 'Left', 'Done']],
+            body: group.fromStock.map(use => [
+                `${formatFeetInches(use.stockLength)}\n(${formatInches(use.stockLength)})`,
+                use.pieces.map(p => `${p.label} - ${formatInches(p.length)}`).join('\n'),
+                formatInches(use.usedLength),
+                use.isKeep ? `${formatInches(use.offcut)}\nback to stock` : formatInches(use.offcut),
+                '',
+            ]),
+            theme: 'plain',
+            rowPageBreak: 'avoid',
+            styles: { font: 'helvetica', fontSize: 9, textColor: [20, 20, 20], cellPadding: 2, valign: 'middle', lineColor: [205, 205, 205], lineWidth: { bottom: 0.2 }, minCellHeight: 10 },
+            headStyles: { fillColor: [22, 128, 61], textColor: [255, 255, 255], fontStyle: 'bold', minCellHeight: 8 },
+            columnStyles: {
+                0: { cellWidth: 28 },
+                1: { cellWidth: 82 },
+                2: { cellWidth: 20, halign: 'right' },
+                3: { cellWidth: 38, halign: 'right' },
+                4: { cellWidth: 12, halign: 'center' },
+            },
+            didDrawCell: (data: any) => {
+                if (data.section !== 'body' || data.column.index !== 4) return;
+                const box = 4.5;
+                doc.setDrawColor(40, 40, 40);
+                doc.setLineWidth(0.3);
+                doc.rect(data.cell.x + (data.cell.width - box) / 2, data.cell.y + (data.cell.height - box) / 2, box, box, 'S');
+            },
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+
+        if (plan.bars.length > 0) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text("2. New bars", MARGIN, y);
+            y += 2;
+        }
+    }
 
     if (plan.bars.length > 0) {
         autoTable(doc, {
@@ -138,8 +215,9 @@ export function drawTrackCuttingPlan(doc: any, autoTable: any, plan: CuttingPlan
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     ensureSpace(6);
+    const stockLine = group.fromStock.length > 0 ? `${group.fromStock.length} stock ${group.fromStock.length === 1 ? 'piece' : 'pieces'}  |  ` : '';
     doc.text(
-        `Total: ${plan.totalBars} ${plan.totalBars === 1 ? 'track' : 'tracks'} of ${formatStockLength(plan.stockLength)}  |  Used ${formatInches(plan.totalUsed)}  |  Offcut ${formatInches(plan.totalOffcut)}`,
+        `Total: ${stockLine}${plan.totalBars} new ${plan.totalBars === 1 ? 'track' : 'tracks'} of ${formatStockLength(plan.stockLength)}  |  Used ${formatInches(plan.totalUsed)}  |  Offcut ${formatInches(plan.totalOffcut)}`,
         MARGIN, y
     );
     y += 6;
@@ -182,13 +260,17 @@ export function drawTrackCuttingPlan(doc: any, autoTable: any, plan: CuttingPlan
         y += boxH;
     }
 
-    // Purchase line, pinned to the bottom of the last page
-    const footerY = PAGE_H - MARGIN - 2;
-    doc.setDrawColor(40, 40, 40);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN, footerY - 6, PAGE_W - MARGIN, footerY - 6);
+    // Purchase line for every product, pinned to the bottom of the last page
+    if (options.purchaseLine === null) return;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Bars to cut / purchase: ${purchaseSummary(plan, 'x')}`, MARGIN, footerY);
+    // Several track products can need two lines; they grow upwards from the bottom margin
+    const purchaseLines: string[] = doc.splitTextToSize(`Bars to cut / purchase: ${options.purchaseLine}`, CONTENT_W).slice(0, 2);
+    const footerY = PAGE_H - MARGIN - 2;
+    const firstLineY = footerY - (purchaseLines.length - 1) * 5;
+    doc.setDrawColor(40, 40, 40);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, firstLineY - 6, PAGE_W - MARGIN, firstLineY - 6);
+    doc.text(purchaseLines, MARGIN, firstLineY);
 }

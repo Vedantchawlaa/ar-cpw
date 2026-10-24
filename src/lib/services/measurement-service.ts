@@ -34,9 +34,31 @@ export async function listMeasurements() {
     });
 }
 
+const parseData = (value: unknown) => (typeof value === "string" ? JSON.parse(value) : value) as any;
+
+/**
+ * "Stock already updated for this job" lives in data.sharedSizes.trackStock.
+ * Screens save the whole sheet from the copy they loaded, which can predate
+ * that booking - carry it over so a job is never booked into stock twice.
+ */
+export function keepStockBooking(existingData: unknown, incomingData: any) {
+    const booked = parseData(existingData)?.sharedSizes?.trackStock;
+    if (!booked || !incomingData || typeof incomingData !== "object" || incomingData.sharedSizes?.trackStock) return incomingData;
+    return { ...incomingData, sharedSizes: { ...(incomingData.sharedSizes ?? {}), trackStock: booked } };
+}
+
+async function storedData(where: { id: string } | { leadId: string }) {
+    const row = await (db as any).measurement.findUnique({ where, select: { data: true } });
+    return row?.data;
+}
+
 // Unified Save
 export async function saveMeasurement(params: SaveMeasurementInput) {
-    const { id, leadId, data, notes, customerName, title, referenceFiles } = params;
+    const { id, leadId, notes, customerName, title, referenceFiles } = params;
+    let { data } = params;
+
+    if (id) data = keepStockBooking(await storedData({ id }), data);
+    else if (leadId) data = keepStockBooking(await storedData({ leadId }), data);
 
     if (id) {
         // Update existing by ID
@@ -287,7 +309,7 @@ export async function upsertMeasurementRow(id: string, row: MeasurementRowInput)
     if (existing) {
         await (db as any).measurement.update({
             where: { id },
-            data: { ...row, updatedAt: new Date() },
+            data: { ...row, ...(row.data !== undefined ? { data: keepStockBooking(existing.data, row.data) } : {}), updatedAt: new Date() },
         });
     } else {
         await (db as any).measurement.create({

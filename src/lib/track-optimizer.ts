@@ -379,3 +379,134 @@ export function optimizeTrackCutting(pieces: TrackPiece[], options: OptimizerOpt
         isExact,
     };
 }
+
+// ---------------------------------------------------------------------------
+// Stock-aware planning: pieces already in the godown are used before new bars.
+// ---------------------------------------------------------------------------
+
+export interface ProductTrackPiece extends TrackPiece {
+    productId?: string | null; // track product chosen for this window; null = not selected
+}
+
+export interface StockTrackPiece {
+    id: string;
+    productId: string;
+    length: number; // inches
+}
+
+/** One piece taken from stock and what is cut from it. */
+export interface StockUse {
+    stockPieceId: string;
+    stockLength: number;
+    pieces: TrackPiece[];
+    usedLength: number; // pieces + kerf
+    offcut: number;
+    isKeep: boolean; // offcut goes back to stock
+}
+
+export interface ProductCuttingPlan {
+    productId: string | null;
+    fromStock: StockUse[];
+    plan: CuttingPlan; // new bars for whatever stock could not cover
+}
+
+export interface StockAwarePlan {
+    groups: ProductCuttingPlan[];
+    stockLength: number;
+    kerf: number;
+    keepThreshold: number;
+}
+
+// Largest total length of `sizes` (descending, in units) that fits in `cap`. Returns the chosen indexes.
+function bestSubset(sizes: number[], cap: number, nodeLimit = 20000): number[] {
+    let best: number[] = [];
+    let bestSum = 0;
+    const chosen: number[] = [];
+    const suffix = new Array(sizes.length + 1).fill(0);
+    for (let i = sizes.length - 1; i >= 0; i--) suffix[i] = suffix[i + 1] + sizes[i];
+    let nodes = 0;
+
+    const dfs = (i: number, sum: number) => {
+        if (++nodes > nodeLimit || bestSum === cap) return;
+        if (sum > bestSum) {
+            bestSum = sum;
+            best = chosen.slice();
+        }
+        if (i === sizes.length || sum + suffix[i] <= bestSum) return;
+        if (sum + sizes[i] <= cap) {
+            chosen.push(i);
+            dfs(i + 1, sum + sizes[i]);
+            chosen.pop();
+        }
+        dfs(i + 1, sum);
+    };
+    dfs(0, 0);
+    return best;
+}
+
+/**
+ * Cuts each product's pieces from that product's stock first, then plans new
+ * bars for the rest. Stock pieces are filled shortest first, so small offcuts
+ * get used before full bars; each one takes the combination of windows that
+ * fills it best. Windows without a track product never use stock.
+ */
+export function planWithStock(
+    pieces: ProductTrackPiece[],
+    stock: StockTrackPiece[],
+    options: OptimizerOptions = {}
+): StockAwarePlan {
+    const base = optimizeTrackCutting([], options); // resolves the settings the same way
+    const kerfUnits = toUnits(base.kerf);
+
+    const byProduct = new Map<string | null, ProductTrackPiece[]>();
+    for (const piece of pieces) {
+        const key = piece.productId || null;
+        if (!byProduct.has(key)) byProduct.set(key, []);
+        byProduct.get(key)!.push(piece);
+    }
+
+    const groups: ProductCuttingPlan[] = [];
+    for (const [productId, productPieces] of byProduct) {
+        let remaining = productPieces
+            .filter(p => Number.isFinite(p.length) && toUnits(p.length) > 0)
+            .sort((a, b) => b.length - a.length);
+        const invalid = productPieces.filter(p => !(Number.isFinite(p.length) && toUnits(p.length) > 0));
+
+        const fromStock: StockUse[] = [];
+        if (productId) {
+            const available = stock
+                .filter(s => s.productId === productId && toUnits(s.length) > 0)
+                .sort((a, b) => a.length - b.length || a.id.localeCompare(b.id));
+
+            for (const stockPiece of available) {
+                if (remaining.length === 0) break;
+                // Same kerf trick as the bar optimizer: n pieces need n - 1 cuts
+                const cap = toUnits(stockPiece.length) + kerfUnits;
+                const sizes = remaining.map(p => toUnits(p.length) + kerfUnits);
+                const pick = bestSubset(sizes, cap);
+                if (pick.length === 0) continue;
+
+                const taken = pick.map(i => remaining[i]);
+                const usedUnits = taken.reduce((sum, p) => sum + toUnits(p.length), 0) + (taken.length - 1) * kerfUnits;
+                const offcut = toInches(toUnits(stockPiece.length) - usedUnits);
+                fromStock.push({
+                    stockPieceId: stockPiece.id,
+                    stockLength: stockPiece.length,
+                    pieces: taken,
+                    usedLength: toInches(usedUnits),
+                    offcut,
+                    isKeep: offcut > 0 && offcut >= base.keepThreshold,
+                });
+                const pickedSet = new Set(pick);
+                remaining = remaining.filter((_, i) => !pickedSet.has(i));
+            }
+        }
+
+        groups.push({ productId, fromStock, plan: optimizeTrackCutting([...remaining, ...invalid], options) });
+    }
+
+    // Products in a stable order, "not selected" last
+    groups.sort((a, b) => (a.productId === null ? 1 : 0) - (b.productId === null ? 1 : 0));
+
+    return { groups, stockLength: base.stockLength, kerf: base.kerf, keepThreshold: base.keepThreshold };
+}

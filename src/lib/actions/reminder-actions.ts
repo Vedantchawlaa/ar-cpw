@@ -1,6 +1,8 @@
 "use server";
 
 import db from "@/lib/db";
+import { lowStockProducts } from "@/lib/services/stock-service";
+import { formatStockQuantity } from "@/lib/stock-units";
 import { revalidatePath } from "next/cache";
 
 export async function getReminders() {
@@ -33,27 +35,13 @@ export async function getReminders() {
             ],
         });
 
-        // Get critical stock products (stock <= 5)
-        // Exclude 'Blinds' as requested
-        const lowStockProducts = await (db as any).product.findMany({
-            where: {
-                stockQuantity: {
-                    lte: 5
-                },
-                category: {
-                    not: "Blinds"
-                }
-            },
-            orderBy: {
-                stockQuantity: "asc"
-            }
-        });
+        // Products at or below the alert level set for them on the Stock page
+        const lowStock = await lowStockProducts();
 
-        // Transform stock to reminder format
-        const stockReminders = lowStockProducts.map((product: any) => ({
+        const stockReminders = lowStock.map(product => ({
             id: `stock-${product.id}`,
             name: `Low Stock: ${product.name}`,
-            phone: `Qty: ${product.stockQuantity}`,
+            phone: `In stock: ${formatStockQuantity(product.stockKind, product.total)}`,
             email: "Restock required",
             city: product.category || "Inventory",
             nextContactDate: new Date(), // Show as current
@@ -114,30 +102,16 @@ export async function getUpcomingReminders() {
             take: 5
         });
 
-        // Get critical stock products (stock <= 5)
-        // Exclude 'Blinds' as requested
-        const lowStockProducts = await (db as any).product.findMany({
-            where: {
-                stockQuantity: {
-                    lte: 5
-                },
-                category: {
-                    not: "Blinds"
-                }
-            },
-            orderBy: {
-                stockQuantity: "asc"
-            }
-        });
+        const lowStock = await lowStockProducts();
 
         // Transform to reminder format
-        const stockReminders = lowStockProducts.map((product: any) => ({
+        const stockReminders = lowStock.map(product => ({
             id: `stock-${product.id}`,
             name: `Restock: ${product.name}`,
-            phone: `Current: ${product.stockQuantity} units`,
+            phone: `Current: ${formatStockQuantity(product.stockKind, product.total)}`,
             nextContactDate: new Date(), // Show as today
             type: 'stock' as const,
-            stockQuantity: product.stockQuantity
+            stockQuantity: product.total
         }));
 
         return [...stockReminders, ...leads];
@@ -163,18 +137,7 @@ export async function getReminderCount() {
             }
         });
 
-        // Get low stock products count (critical stock <= 5)
-        // Exclude 'Blinds' as requested
-        const lowStockCount = await (db as any).product.count({
-            where: {
-                stockQuantity: {
-                    lte: 5
-                },
-                category: {
-                    not: "Blinds"
-                }
-            }
-        });
+        const lowStockCount = (await lowStockProducts()).length;
 
         // Get deadline count (today)
         const deadlineCount = await (db as any).quotation.count({

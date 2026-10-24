@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { inferStockKind } from "@/lib/stock-units";
 
 export async function listProducts() {
     return (prisma as any).product.findMany({
@@ -6,11 +7,14 @@ export async function listProducts() {
     });
 }
 
+// Updating an existing product only changes its rate (and category when one is given):
+// stock counts are changed on the Stock page, so saving a quotation line to the
+// catalogue can never reset them.
 export async function upsertProduct(name: string, rate: number, stockQuantity: number = 0, category: string = "") {
     await (prisma as any).product.upsert({
         where: { name },
-        update: { rate, stockQuantity, category },
-        create: { name, rate, stockQuantity, category }
+        update: { rate, ...(category ? { category } : {}) },
+        create: { name, rate, stockQuantity, category, stockKind: inferStockKind(category, name) }
     });
 }
 

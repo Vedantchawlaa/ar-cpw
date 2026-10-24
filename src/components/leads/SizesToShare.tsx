@@ -9,7 +9,9 @@ import { saveMeasurement } from "@/lib/actions/measurement-actions";
 import { getProducts } from "@/lib/actions/product-actions";
 import { useRouter } from "next/navigation";
 import { TrackCuttingPlan } from "@/components/leads/TrackCuttingPlan";
-import { DEFAULT_TRACK_CUTTING_SETTINGS, TrackCuttingSettings, optimizeTrackCutting } from "@/lib/track-optimizer";
+import { DEFAULT_TRACK_CUTTING_SETTINGS, TrackCuttingSettings, planWithStock, type StockAwarePlan } from "@/lib/track-optimizer";
+import { applyTrackPlanToStock, planTracksWithStock } from "@/lib/actions/stock-actions";
+import type { AppliedTrackStock } from "@/lib/services/stock-service";
 import { drawTrackCuttingPlan } from "@/lib/track-cutting-pdf";
 
 export function SizesToShare({ leadId, measurementId, initialData, customerName, title }: any) {
@@ -111,13 +113,53 @@ export function SizesToShare({ leadId, measurementId, initialData, customerName,
         const finalSize = item.size - ((specs.finials || 0) * 3) - ((specs.endcaps || 0) * 0.5) - ((specs.motors || 0) * 3);
         return {
             label: `${item.room} > ${item.name.replace(/ \((Main|Sheer) Track\)$/, '')} ${item.type === 'main' ? 'Main' : 'Sheer'}`,
-            length: parseFloat(finalSize.toFixed(2))
+            length: parseFloat(finalSize.toFixed(2)),
+            productId: item.productId || null
         };
     }));
-    const cuttingPlan = useMemo(
-        () => optimizeTrackCutting(JSON.parse(cutPiecesKey), trackCutting),
+
+    // Plan without stock straight away, then swap in the plan that uses pieces
+    // already in the godown once the server has worked it out.
+    const planKey = `${cutPiecesKey}|${JSON.stringify(trackCutting)}`;
+    const localPlan = useMemo(
+        () => planWithStock(JSON.parse(cutPiecesKey), [], trackCutting),
         [cutPiecesKey, trackCutting]
     );
+    const [stockPlan, setStockPlan] = useState<{ key: string; plan: StockAwarePlan } | null>(null);
+    const [stockVersion, setStockVersion] = useState(0);
+    useEffect(() => {
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            const plan = await planTracksWithStock(JSON.parse(cutPiecesKey), trackCutting);
+            if (!cancelled && plan) setStockPlan({ key: planKey, plan });
+        }, 400);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [planKey, cutPiecesKey, trackCutting, stockVersion]);
+    const cuttingPlan = stockPlan?.key === planKey ? stockPlan.plan : localPlan;
+    const usesStock = stockPlan?.key === planKey;
+
+    const [trackStock, setTrackStock] = useState<AppliedTrackStock | null>(initialData?.sharedSizes?.trackStock ?? null);
+    const [applyingStock, setApplyingStock] = useState(false);
+    const handleApplyToStock = async () => {
+        if (!measurementId) {
+            alert("Save the measurement first.");
+            return;
+        }
+        if (!confirm("Book this plan in stock? Stock pieces used by the plan are taken out (or shortened) and KEEP offcuts from new bars are added. This is done once per job.")) return;
+        setApplyingStock(true);
+        const result = await applyTrackPlanToStock(measurementId, JSON.parse(cutPiecesKey), trackCutting);
+        setApplyingStock(false);
+        if (result.success && "applied" in result) {
+            setTrackStock(result.applied);
+            setStockVersion(v => v + 1);
+            router.refresh();
+        } else {
+            alert(("error" in result && result.error) || "Failed to update stock");
+        }
+    };
 
     // Group curtains by fabric
     const curtainsByFabric: Record<string, typeof curtainItems> = {};
@@ -239,7 +281,7 @@ export function SizesToShare({ leadId, measurementId, initialData, customerName,
                         margin: { left: 15, right: 15, bottom: 15 }
                     });
 
-                    drawTrackCuttingPlan(doc, autoTable, cuttingPlan, { clientName: customerName || title, logoData });
+                    drawTrackCuttingPlan(doc, autoTable, cuttingPlan, { clientName: customerName || title, logoData, productNames: productMap });
                 } else if (type === 'Curtains') {
                     doc.setFontSize(12);
                     doc.setFont("helvetica", "bold");
@@ -450,7 +492,12 @@ export function SizesToShare({ leadId, measurementId, initialData, customerName,
 
             {trackItems.length > 0 && (
                 <TrackCuttingPlan
-                    plan={cuttingPlan}
+                    result={cuttingPlan}
+                    productNames={productMap}
+                    usesStock={usesStock}
+                    applied={trackStock}
+                    onApplyToStock={handleApplyToStock}
+                    applying={applyingStock}
                     settings={trackCutting}
                     onSettingsChange={setTrackCutting}
                     onDownload={(e) => downloadPDF('Tracks', e)}
