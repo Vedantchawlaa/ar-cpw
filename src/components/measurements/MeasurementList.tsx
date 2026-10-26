@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 export function MeasurementList({ measurements }: { measurements: any[] }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [exportTarget, setExportTarget] = useState<any | null>(null);
-    const [exportTypes, setExportTypes] = useState<{ curtain: boolean; blind: boolean; detailed: boolean }>({ curtain: true, blind: true, detailed: false });
+    const [exportTypes, setExportTypes] = useState<{ curtain: boolean; blind: boolean; detailed: boolean; photos: boolean }>({ curtain: true, blind: true, detailed: false, photos: false });
     const router = useRouter();
 
     const handleDelete = async (id: string, title: string, e: React.MouseEvent) => {
@@ -60,7 +60,7 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
         (m.lead?.name?.toLowerCase() || "").includes(searchQuery.toLowerCase())
     );
 
-    const generatePDF = async (measurement: any, typeFilter: { curtain: boolean; blind: boolean; detailed: boolean }, e?: React.MouseEvent) => {
+    const generatePDF = async (measurement: any, typeFilter: { curtain: boolean; blind: boolean; detailed: boolean; photos: boolean }, e?: React.MouseEvent) => {
         e?.preventDefault();
         e?.stopPropagation();
 
@@ -281,8 +281,8 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
                         yPos += 6;
                     }
 
-                    // Add images for each item (detailed exports only)
-                    for (const item of (typeFilter.detailed ? (room.items || []) : [])) {
+                    // Add images for each item (only when photos were chosen)
+                    for (const item of (typeFilter.photos ? (room.items || []) : [])) {
                         if (item.images && item.images.length > 0) {
                             // Add item name label for images
                             doc.setFontSize(9);
@@ -555,7 +555,7 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    setExportTypes({ curtain: true, blind: true, detailed: false });
+                                                    setExportTypes({ curtain: true, blind: true, detailed: false, photos: false });
                                                     setExportTarget(m);
                                                 }}
                                                 className="p-1.5 hover:bg-slate-100 rounded-md transition-colors"
@@ -640,7 +640,21 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
                                 Detailed PDF
                             </label>
                             <p className="text-xs text-muted-foreground pl-6">
-                                Adds W x H, mount/style/ties details, and window photos. Unticked = basic summary only.
+                                Adds W x H and mount/style/ties details. Unticked = basic summary only.
+                            </p>
+                        </div>
+                        <div>
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={exportTypes.photos}
+                                    onChange={(e) => setExportTypes(prev => ({ ...prev, photos: e.target.checked }))}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                Include photos
+                            </label>
+                            <p className="text-xs text-muted-foreground pl-6">
+                                Adds each window&apos;s photos. Unticked = measurements only, smaller file.
                             </p>
                         </div>
                     </div>
