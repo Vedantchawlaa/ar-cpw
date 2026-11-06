@@ -26,7 +26,7 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
 
     const data = await getStaffMonth(id, year, month);
     if (!data) notFound();
-    const { staff, records, summary, payments, bonus, totalPay, paid, balance } = data;
+    const { staff, records, summary, payments, bonus, totalPay, payToDate, paid, balance } = data;
     const monthName = monthLabel(year, month);
 
     const byDate = new Map(records.map(r => [r.date, r]));
@@ -96,7 +96,7 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
                             value={summary.sundayPay > 0 ? `+ ${formatRupees(summary.sundayPay)}` : "—"} className="text-teal-700" />
                         <Row label="Bonus" value={bonus > 0 ? `+ ${formatRupees(bonus)}` : "—"} className="text-purple-700" />
                         <div className="border-t pt-2">
-                            <Row label="Total pay" value={formatRupees(totalPay)} className="text-base font-bold" />
+                            <Row label="Total pay" value={`${formatRupees(payToDate)} / ${formatRupees(totalPay)}`} className="text-base font-bold" />
                         </div>
                         <Row label="Paid" value={paid > 0 ? `− ${formatRupees(paid)}` : "—"} className="text-green-700" />
                         <div className="border-t pt-2 flex justify-between gap-4 text-base font-bold">

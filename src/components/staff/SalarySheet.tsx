@@ -19,7 +19,7 @@ interface SalarySheetProps {
     month: number;
     date: string;
     today: string;
-    rows: { staff: StaffMember; summary: SalarySummary; bonus: number; totalPay: number; paid: number; balance: number }[];
+    rows: { staff: StaffMember; summary: SalarySummary; bonus: number; totalPay: number; payToDate: number; paid: number; balance: number }[];
 }
 
 /** Balance due, or "advance" when more has been paid than earned. */
@@ -40,10 +40,11 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
             sundayPay: acc.sundayPay + r.summary.sundayPay,
             bonus: acc.bonus + r.bonus,
             totalPay: acc.totalPay + r.totalPay,
+            payToDate: acc.payToDate + r.payToDate,
             paid: acc.paid + r.paid,
             balance: acc.balance + r.balance,
         }),
-        { salary: 0, deduction: 0, otPay: 0, sundayPay: 0, bonus: 0, totalPay: 0, paid: 0, balance: 0 }
+        { salary: 0, deduction: 0, otPay: 0, sundayPay: 0, bonus: 0, totalPay: 0, payToDate: 0, paid: 0, balance: 0 }
     );
     const monthName = monthLabel(year, month);
     const monthParam = monthKey(year, month);
@@ -80,19 +81,19 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                     <th className="text-center font-medium px-3 py-3" title="Half days">Half</th>
                                     <th className="text-center font-medium px-3 py-3" title="Leave asked by staff — deducted">Leave</th>
                                     <th className="text-center font-medium px-3 py-3" title="Company leave — paid">Co. leave</th>
-                                    <th className="text-center font-medium px-3 py-3" title="Days so far with no entry — not deducted">Unmarked</th>
+                                    <th className="text-center font-medium px-3 py-3" title="Days so far with no entry — not counted in earned till date">Unmarked</th>
                                     <th className="text-right font-medium px-3 py-3">Deduction</th>
                                     <th className="text-right font-medium px-3 py-3" title="Overtime after shift end">OT</th>
                                     <th className="text-right font-medium px-3 py-3" title="Extra half day for each Sunday worked">Sunday</th>
                                     <th className="text-right font-medium px-3 py-3">Bonus</th>
-                                    <th className="text-right font-medium px-3 py-3" title="Salary − deduction + OT + Sunday + bonus">Total pay</th>
+                                    <th className="text-right font-medium px-3 py-3" title="Earned till date / total for the month (salary − deduction + OT + Sunday + bonus)">Total pay</th>
                                     <th className="text-right font-medium px-3 py-3">Paid</th>
                                     <th className="text-right font-medium px-3 py-3">Balance</th>
                                     <th className="px-4 py-3"><span className="sr-only">Actions</span></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {rows.map(({ staff, summary, bonus, totalPay, paid, balance }) => (
+                                {rows.map(({ staff, summary, bonus, totalPay, payToDate, paid, balance }) => (
                                     <tr key={staff.id} className="hover:bg-slate-50/50">
                                         <td className="px-4 py-3">
                                             <Link href={`/attendance/${staff.id}?month=${monthParam}`} className="font-medium text-slate-900 hover:underline">{staff.name}</Link>
@@ -123,7 +124,7 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                             ) : "—"}
                                         </td>
                                         <td className="px-3 py-3 text-right tabular-nums text-purple-700">{bonus > 0 ? `+ ${formatRupees(bonus)}` : "—"}</td>
-                                        <td className="px-3 py-3 text-right tabular-nums font-semibold">{formatRupees(totalPay)}</td>
+                                        <td className="px-3 py-3 text-right tabular-nums font-semibold whitespace-nowrap">{formatRupees(payToDate)} / {formatRupees(totalPay)}</td>
                                         <td className="px-3 py-3 text-right tabular-nums text-green-700">{paid > 0 ? formatRupees(paid) : "—"}</td>
                                         <td className="px-3 py-3 text-right tabular-nums font-medium whitespace-nowrap"><BalanceText balance={balance} /></td>
                                         <td className="px-4 py-2">
@@ -144,7 +145,7 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                     <td className="px-3 py-3 text-right tabular-nums text-indigo-700">{totals.otPay > 0 ? `+ ${formatRupees(totals.otPay)}` : "—"}</td>
                                     <td className="px-3 py-3 text-right tabular-nums text-teal-700">{totals.sundayPay > 0 ? `+ ${formatRupees(totals.sundayPay)}` : "—"}</td>
                                     <td className="px-3 py-3 text-right tabular-nums text-purple-700">{totals.bonus > 0 ? `+ ${formatRupees(totals.bonus)}` : "—"}</td>
-                                    <td className="px-3 py-3 text-right tabular-nums">{formatRupees(totals.totalPay)}</td>
+                                    <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">{formatRupees(totals.payToDate)} / {formatRupees(totals.totalPay)}</td>
                                     <td className="px-3 py-3 text-right tabular-nums text-green-700">{formatRupees(totals.paid)}</td>
                                     <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap"><BalanceText balance={Math.round(totals.balance * 100) / 100} /></td>
                                     <td />

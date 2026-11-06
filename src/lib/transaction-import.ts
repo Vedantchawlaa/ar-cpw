@@ -399,7 +399,26 @@ export function tableToTransactions(rows: unknown[][], defaultDate: string = tod
     const fits = (step: number) => body.filter((_, i) => balanceMove(i, step) !== null).length;
     const balanceStep = fits(1) > fits(-1) ? 1 : -1;
 
+    // A second heading row with different columns ("Opening Balance | Debits | Credits | Closing Bal")
+    // starts the bank's summary block: everything from there on is totals, not transactions.
+    // The same heading repeated (printed on every page) is just skipped.
+    const headingKinds = (row: unknown[]) => row.map(cell => (typeof cell === "string" ? classifyHeader(cell) : null));
+    const isHeadingRow = (kinds: Array<ColumnKind | null>) =>
+        kinds.filter(Boolean).length >= 2 && kinds.some(k => k === "amount" || k === "debit" || k === "credit" || k === "balance");
+    const headerSignature = header ? headingKinds(cleanRows[header.index]).join("|") : null;
+    let tableEnded = false;
+
     body.forEach((row, rowIndex) => {
+        if (tableEnded) return;
+        const kinds = headingKinds(row);
+        if (isHeadingRow(kinds) && !row.some(cell => typeof cell === "number" || parseAmount(cell))) {
+            if (headerSignature !== null && kinds.join("|") !== headerSignature && result.length > 0) tableEnded = true;
+            if (headerSignature !== null) return;
+        }
+        if (/^statement summary|^end of statement/i.test(cellText(row.find(c => cellText(c) !== "")).replace(/^[-\s]+/, "")) && result.length > 0) {
+            tableEnded = true;
+            return;
+        }
         const description = [...map.description, ...(map.description.length === 0 ? map.reference : [])]
             .map(col => cellText(row[col]))
             .filter((text, i, all) => text && all.indexOf(text) === i)

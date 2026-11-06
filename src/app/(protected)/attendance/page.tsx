@@ -40,15 +40,15 @@ export default async function AttendancePage({ searchParams }: PageProps) {
                 </Link>
             </div>
 
-            <DailyAttendanceBoard date={date} today={today} month={monthKey(year, month)} rows={rows} />
+            <DailyAttendanceBoard key={date} date={date} today={today} month={monthKey(year, month)} rows={rows} />
             <SalarySheet year={year} month={month} date={date} today={today} rows={salaryRows} />
 
             <p className="text-xs text-slate-500">
                 Pay per day = monthly salary ÷ days in the month. In the joining month, salary counts only from the joining date to month end. <b>Leave</b> (asked by staff) deducts a full day and <b>Half day</b> deducts half.
-                {" "}<b>Company leave</b> is paid. Unmarked days are not deducted.
+                {" "}<b>Company leave</b> is paid. Unmarked days earn nothing till they are marked; Sundays count automatically.
                 {" "}<b>OT</b> = time after shift end × OT rate (set per staff, or pay per day ÷ shift hours).
                 {" "}Working on a <b>Sunday</b> earns an extra half day; unmarked Sundays are the weekly off.
-                {" "}Total pay = salary − deduction + OT + Sunday extra + <b>bonus</b>; Balance = total pay − amounts <b>paid</b>.
+                {" "}Total pay = salary − deduction + OT + Sunday extra + <b>bonus</b>, shown as earned till date / total for the month; Balance = total for the month − amounts <b>paid</b>.
             </p>
         </div>
     );

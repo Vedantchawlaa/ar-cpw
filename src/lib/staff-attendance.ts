@@ -48,6 +48,7 @@ export interface SalarySummary {
     sundaysWorked: number;
     sundayPay: number;
     netSalary: number; // base salary − deduction + OT pay + Sunday extra
+    netToDate: number; // net salary with the base counted only for marked days and Sundays up to `countTo`
     workedMinutes: number;
 }
 
@@ -178,6 +179,7 @@ function defaultOtRate(perDay: number, overtime: OvertimeSettings): number {
  * Unmarked days (counted between `countFrom` and `countTo`, inclusive) are reported but not deducted.
  * Overtime (minutes after shift end on PRESENT / HALF_DAY days) is paid per hour and added to net salary.
  * Working on a Sunday (PRESENT / HALF_DAY) earns an extra half day's pay; unmarked Sundays are the weekly off.
+ * `netToDate` is what has been earned by `countTo`: marked days and Sundays count at pay per day, unmarked days earn nothing.
  */
 export function calculateMonthlySalary(
     monthlySalary: number,
@@ -214,6 +216,8 @@ export function calculateMonthlySalary(
 
     const payableDays = employedKeys.length;
     const baseSalary = payableDays === totalDays ? monthlySalary : round2(perDay * payableDays);
+    const daysToDate = employedKeys.filter(k => k <= to && (byDate.has(k) || isSunday(k))).length;
+    const baseToDate = daysToDate === payableDays ? baseSalary : round2(perDay * daysToDate);
     const deduction = round2(perDay * deductedDays);
     const otRatePerHour = overtime ? round2(overtime.ratePerHour ?? defaultOtRate(perDay, overtime)) : 0;
     const otPay = round2((otMinutes / 60) * otRatePerHour);
@@ -236,6 +240,7 @@ export function calculateMonthlySalary(
         sundaysWorked,
         sundayPay,
         netSalary: round2(baseSalary - deduction + otPay + sundayPay),
+        netToDate: round2(baseToDate - deduction + otPay + sundayPay),
         workedMinutes: worked,
     };
 }
@@ -244,9 +249,9 @@ export const PAYMENT_TYPES = ["PAYMENT", "BONUS"] as const;
 export type PaymentType = (typeof PAYMENT_TYPES)[number];
 
 /** Month totals once bonuses and payments are known. Negative balance means paid in advance. */
-export function salaryBalance(netSalary: number, entries: { type: string; amount: number }[]) {
+export function salaryBalance(netSalary: number, entries: { type: string; amount: number }[], netToDate = netSalary) {
     const bonus = round2(entries.filter(e => e.type === "BONUS").reduce((t, e) => t + e.amount, 0));
     const paid = round2(entries.filter(e => e.type !== "BONUS").reduce((t, e) => t + e.amount, 0));
     const totalPay = round2(netSalary + bonus);
-    return { bonus, paid, totalPay, balance: round2(totalPay - paid) };
+    return { bonus, paid, totalPay, payToDate: round2(netToDate + bonus), balance: round2(totalPay - paid) };
 }

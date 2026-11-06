@@ -276,6 +276,28 @@ export async function markCompanyLeaveForAll(date: string, note?: string) {
     }
 }
 
+/** Marks the given active staff PRESENT on `date`, keeping any punch times and notes already entered. */
+export async function markPresent(staffIds: string[], date: string) {
+    if (!await isAdminUser()) return UNAUTHORIZED;
+    if (!isValidDateKey(date)) return { success: false as const, error: "Invalid date" };
+    if (date > businessNow().date) return { success: false as const, error: "Cannot mark a future date." };
+    const day = dateKeyToDate(date);
+
+    try {
+        const staff = await db.staff.findMany({ where: { id: { in: staffIds }, active: true, joinedAt: { lte: day } }, select: { id: true } });
+        await db.$transaction(staff.map(s => db.staffAttendance.upsert({
+            where: { staffId_date: { staffId: s.id, date: day } },
+            create: { staffId: s.id, date: day, status: "PRESENT" },
+            update: { status: "PRESENT" },
+        })));
+        revalidateStaff();
+        return { success: true as const, count: staff.length };
+    } catch (error) {
+        console.error("Failed to mark present:", error);
+        return { success: false as const, error: "Failed to mark present." };
+    }
+}
+
 const PaymentSchema = z.object({
     year: z.coerce.number().int().min(2000).max(2100),
     month: z.coerce.number().int().min(1).max(12),
@@ -358,7 +380,7 @@ export async function getSalarySheet(year: number, month: number) {
     return staff.map(s => {
         const member = serializeStaff(s);
         const summary = calculateMonthlySalary(s.monthlySalary, year, month, s.attendance.map(serializeRecord), countRange(member.joinedAt, year, month, today), overtimeSettings(member));
-        return { staff: member, summary, ...salaryBalance(summary.netSalary, s.payments) };
+        return { staff: member, summary, ...salaryBalance(summary.netSalary, s.payments, summary.netToDate) };
     });
 }
 
@@ -384,6 +406,6 @@ export async function getStaffMonth(staffId: string, year: number, month: number
         records,
         summary,
         payments: staff.payments.map(serializePayment),
-        ...salaryBalance(summary.netSalary, staff.payments),
+        ...salaryBalance(summary.netSalary, staff.payments, summary.netToDate),
     };
 }

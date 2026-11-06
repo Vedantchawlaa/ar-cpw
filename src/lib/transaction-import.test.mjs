@@ -261,3 +261,21 @@ test("PDF statement: page footers are skipped and the summary's opening balance 
     assert.equal(rows[1].description, "UPI-THAKAR DAS-9812339501@PTYES-PSIB0000 787-313991321725-SENT USING PAYTM U");
     assert.deepEqual(warnings, []);
 });
+
+test("bank statement summary block at the bottom is not imported as transactions", () => {
+    const rows = [
+        ["Date", "Narration", "Chq./Ref.No.", "Value Dt", "Withdrawal Amt.", "Deposit Amt.", "Closing Balance"],
+        ["01/10/26", "UPI-JAYSHREE FURNISH-UPI", "0000130522860984", "01/10/26", 23104, null, 42830.35],
+        ["05/10/26", "UPI-MALAK SINGH-PAYMENT FROM PHONE", "0000305267247996", "05/10/26", null, 50000, 92830.35],
+        ["STATEMENT SUMMARY  :-", null, null, null, null, null, null],
+        ["Opening Balance", null, null, null, "Debits", "Credits", "Closing Bal"],
+        [65934.35, null, null, null, 23104, 50000, 92830.35],
+        [null, null, null, null, "Dr Count", "Cr Count", null],
+        [null, null, null, null, 1, 1, null],
+    ];
+    const { rows: out } = tableToTransactions(rows, "2026-11-06");
+    assert.deepEqual(out.map(r => [r.date, r.type, r.amount]), [
+        ["2026-10-01", "EXPENSE", 23104],
+        ["2026-10-05", "INCOME", 50000],
+    ]);
+});

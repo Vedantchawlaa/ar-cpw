@@ -8,6 +8,7 @@ import {
     isValidDateKey,
     salaryBalance,
     lateMinutes,
+    monthDateKeys,
     overtimeMinutes,
     shiftMonth,
     workedMinutes,
@@ -76,7 +77,7 @@ test("bonus adds to pay, payments reduce the balance", () => {
             { type: "BONUS", amount: 2000 },
             { type: "PAYMENT", amount: 20000 },
         ]),
-        { bonus: 2000, paid: 25000, totalPay: 30500, balance: 5500 }
+        { bonus: 2000, paid: 25000, totalPay: 30500, payToDate: 30500, balance: 5500 }
     );
     assert.equal(salaryBalance(10000, [{ type: "PAYMENT", amount: 12000 }]).balance, -2000);
 });
@@ -131,4 +132,42 @@ test("joining mid-month: salary only from the joining date to month end", () => 
     const fullMonth = calculateMonthlySalary(31000, 2026, 10, [], { joinedAt: "2025-01-01" });
     assert.equal(fullMonth.payableDays, 31);
     assert.equal(fullMonth.baseSalary, 31000);
+});
+
+test("pay till date: only marked days and Sundays count, unmarked days earn nothing", () => {
+    // September 2026 has 30 days; ₹12,000 → ₹400/day. The 6th is a Sunday.
+    const firstDay = calculateMonthlySalary(12000, 2026, 9, [{ date: "2026-09-01", status: "PRESENT" }], { countTo: "2026-09-01" });
+    assert.equal(firstDay.netToDate, 400);
+    assert.equal(firstDay.netSalary, 12000);
+    assert.equal(calculateMonthlySalary(12000, 2026, 9, [], { countTo: "2026-09-01" }).netToDate, 0);
+
+    const midMonth = calculateMonthlySalary(12000, 2026, 9, [
+        { date: "2026-09-01", status: "PRESENT" },         // +400
+        { date: "2026-09-02", status: "LEAVE" },           // nothing
+        { date: "2026-09-03", status: "HALF_DAY" },        // +200
+        { date: "2026-09-04", status: "COMPANY_LEAVE" },   // +400
+    ], { countTo: "2026-09-10" });                         // Sunday the 6th +400; the other days unmarked
+    assert.equal(midMonth.unmarked, 5);
+    assert.equal(midMonth.netToDate, 1400);
+    assert.equal(midMonth.netSalary, 11400);
+    assert.equal(salaryBalance(midMonth.netSalary, [{ type: "BONUS", amount: 500 }], midMonth.netToDate).payToDate, 1900);
+
+    // Working the Sunday earns the day plus the half day extra.
+    const sunday = calculateMonthlySalary(12000, 2026, 9, [{ date: "2026-09-06", status: "PRESENT" }], { countTo: "2026-09-06" });
+    assert.equal(sunday.netToDate, 600);
+
+    // Fully marked month: till date equals the total, even when pay per day does not divide evenly.
+    const marked = monthDateKeys(2026, 10).map(date => ({ date, status: "PRESENT" }));
+    const finished = calculateMonthlySalary(10000, 2026, 10, marked);
+    assert.equal(finished.netToDate, finished.netSalary);
+    assert.equal(calculateMonthlySalary(10000, 2026, 10, []).netToDate, 1290.32);
+
+    // Joined mid-month: counted from the joining date. Not started yet: nothing earned.
+    const joined = calculateMonthlySalary(12000, 2026, 9, [
+        { date: "2026-09-10", status: "PRESENT" },   // before joining: ignored
+        { date: "2026-09-16", status: "PRESENT" },
+    ], { joinedAt: "2026-09-16", countTo: "2026-09-20" });
+    assert.equal(joined.netToDate, 800);
+    assert.equal(joined.netSalary, 6000);
+    assert.equal(calculateMonthlySalary(12000, 2026, 12, [], { countTo: "2026-11-02" }).netToDate, 0);
 });
