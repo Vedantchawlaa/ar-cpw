@@ -168,6 +168,7 @@ model User {
   leads        Lead[]
   transactions Transaction[]
   shopReviews  ShopReview[]
+  plannerTopics PlannerTopic[]
 
   @@schema("public")
 }
@@ -327,5 +328,36 @@ model StaffPayment {
   staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId, year, month])
+  @@schema("public")
+}
+
+// Planner: a user's own ideas, meeting points and tasks. Each topic is a card
+// with a checklist of checkpoints and a description.
+model PlannerTopic {
+  id          String              @id @default(uuid())
+  userId      String
+  title       String
+  type        String              @default("IDEA") // IDEA | MEETING | TASK
+  description String?             @db.Text
+  deadline    DateTime?
+  done        Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkpoints PlannerCheckpoint[]
+
+  @@index([userId, done])
+  @@schema("public")
+}
+
+model PlannerCheckpoint {
+  id       String       @id @default(uuid())
+  topicId  String
+  text     String
+  done     Boolean      @default(false)
+  position Int          @default(0)
+  topic    PlannerTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
   @@schema("public")
 }

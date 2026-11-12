@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 // @ts-ignore
-import { Bell, LayoutDashboard, LineChart, Package, Settings, Users, FileText, Zap, Smartphone, DollarSign, ShoppingBag, Store, Ruler, Clock, UserCog } from "lucide-react";
+import { Bell, LayoutDashboard, LineChart, Package, Settings, Users, FileText, Zap, Smartphone, DollarSign, ShoppingBag, Store, Ruler, Clock, UserCog, NotebookPen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { getReminderCount } from "@/lib/actions/reminder-actions";
@@ -53,6 +53,11 @@ export function Sidebar() {
             icon: Bell,
             label: "Reminders",
             hasBadge: reminderCount > 0,
+        },
+        {
+            href: "/planner",
+            icon: NotebookPen,
+            label: "Planner",
         },
         {
             href: "/products",
