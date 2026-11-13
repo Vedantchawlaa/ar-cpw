@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /User/tushr 2>/dev/null; cd /Users/tushr/ar-cpw && grep -n \"Fabric Purchase\\\\|Advertisement\\\\|const .*CATEG\" src/lib/transaction-import.ts | head && grep -n \"^const\\\\|^export\" src/lib/transaction-import.ts | head -30 && cat src/components/ui/Card.tsx | head -20 && grep -n \"variant\\\\|size\" src/components/ui/Button.tsx | head)",
+      "Read(//User/**)",
+      "Bash(node --experimental-strip-types --test src/lib/fund-allocation.test.mjs)"
+    ]
+  }
+}

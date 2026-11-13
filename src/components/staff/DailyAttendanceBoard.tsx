@@ -28,7 +28,8 @@ export function DailyAttendanceBoard({ date, today, month, rows }: DailyAttendan
     const [ticked, setTicked] = useState<Set<string>>(new Set());
 
     const marked = rows.filter(r => r.record).length;
-    const present = rows.filter(r => r.record?.status === "PRESENT" || r.record?.status === "HALF_DAY").length;
+    // Not marked counts as present (except on Sunday, the weekly off)
+    const present = rows.filter(r => r.record ? r.record.status === "PRESENT" || r.record.status === "HALF_DAY" : !isSunday(date)).length;
     const unmarkedIds = rows.filter(r => !r.record).map(r => r.staff.id);
     // Ticks on anyone already saved as present have nothing left to save.
     const tickedIds = rows.filter(r => ticked.has(r.staff.id) && r.record?.status !== "PRESENT").map(r => r.staff.id);

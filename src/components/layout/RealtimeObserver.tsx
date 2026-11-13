@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { scheduleRefresh } from '@/lib/realtime-refresh';
 
 export function RealtimeObserver() {
     const router = useRouter();
@@ -24,8 +25,8 @@ export function RealtimeObserver() {
                 },
                 (payload) => {
                     console.log('Database change detected:', payload);
-                    // Refresh the current route's data
-                    router.refresh();
+                    // Refresh the current route's data, one refresh per burst of changes
+                    scheduleRefresh(() => router.refresh());
                 }
             )
             .subscribe();

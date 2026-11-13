@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { scheduleRefresh } from '@/lib/realtime-refresh';
 
 export function useRealtime(tables: string[]) {
   const router = useRouter();
@@ -31,7 +32,8 @@ export function useRealtime(tables: string[]) {
             console.log(`Realtime update on ${table}:`, payload);
             // Refresh the Next.js router data when a change occurs.
             // This is ideal for App Router Server Components so they grab fresh data without full reload.
-            router.refresh();
+            // Shared with RealtimeObserver, so a burst of changes means one refresh in total.
+            scheduleRefresh(() => router.refresh());
           }
         )
         .subscribe((status: string) => {

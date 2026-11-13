@@ -81,7 +81,7 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                     <th className="text-center font-medium px-3 py-3" title="Half days">Half</th>
                                     <th className="text-center font-medium px-3 py-3" title="Leave asked by staff — deducted">Leave</th>
                                     <th className="text-center font-medium px-3 py-3" title="Company leave — paid">Co. leave</th>
-                                    <th className="text-center font-medium px-3 py-3" title="Days so far with no entry — not counted in earned till date">Unmarked</th>
+                                    <th className="text-center font-medium px-3 py-3" title="Days so far with no entry — counted as present (already included in Present)">Not marked</th>
                                     <th className="text-right font-medium px-3 py-3">Deduction</th>
                                     <th className="text-right font-medium px-3 py-3" title="Overtime after shift end">OT</th>
                                     <th className="text-right font-medium px-3 py-3" title="Extra half day for each Sunday worked">Sunday</th>

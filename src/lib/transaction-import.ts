@@ -29,6 +29,7 @@ export const EXPENSE_CATEGORIES = [
     "Fabric Purchase",
     "Accessory Purchase",
     "Advertisement",
+    "Tools",
 ];
 
 export const INCOME_CATEGORIES = ["Sales", "Car Income", "EXTRA"];

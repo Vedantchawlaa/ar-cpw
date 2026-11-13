@@ -361,3 +361,33 @@ model PlannerCheckpoint {
   @@index([topicId])
   @@schema("public")
 }
+
+// Fund allocation: how each month's income is split into buckets (see src/lib/fund-allocation.ts)
+model FundBucket {
+  id         String         @id @default(uuid())
+  name       String
+  percent    Float
+  kind       String         @default("SPEND") // SPEND | SAVE
+  categories String[]       @default([]) // expense categories counted against a SPEND bucket
+  position   Int            @default(0)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  transfers  FundTransfer[]
+
+  @@schema("public")
+}
+
+// Money marked as moved into a SAVE bucket's account for a month. Kept apart from Transaction so P&L is unchanged.
+model FundTransfer {
+  id        String     @id @default(uuid())
+  bucketId  String
+  month     Int // 0-11
+  year      Int
+  amount    Float
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  bucket    FundBucket @relation(fields: [bucketId], references: [id], onDelete: Cascade)
+
+  @@unique([bucketId, month, year])
+  @@schema("public")
+}

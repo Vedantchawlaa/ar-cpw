@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/Card";
 import { addTransaction } from "@/lib/actions/transaction-actions";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/transaction-import";
 
 export function TransactionForm() {
     const [state, dispatch] = useActionState(addTransaction, undefined);
@@ -15,23 +16,8 @@ export function TransactionForm() {
     const [type, setType] = useState("EXPENSE");
     const [date, setDate] = useState<Date | undefined>(new Date());
 
-    const expenseCategories = [
-        "Food",
-        "Salary",
-        "Vehicle maintenance & Fuel",
-        "Utilities",
-        "Other",
-        "Rent",
-        "Fabric Purchase",
-        "Accessory Purchase",
-        "Advertisement"
-    ];
-
-    const incomeCategories = [
-        "Sales",
-        "Car Income",
-        "EXTRA"
-    ];
+    const expenseCategories = EXPENSE_CATEGORIES;
+    const incomeCategories = INCOME_CATEGORIES;
 
     return (
         <Card>

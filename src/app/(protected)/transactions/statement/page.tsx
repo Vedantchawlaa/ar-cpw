@@ -76,11 +76,11 @@ export default async function StatementPage(props: {
             </div>
 
             {/* P&L Summary Row (Compact) */}
-            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
                 <Card className="bg-green-50/50 border-green-100">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Income</p>
+                            <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Revenue</p>
                             <p className="text-xl font-bold text-green-700">₹{formatCurrency(stats.income)}</p>
                         </div>
                         <TrendingUp className="h-8 w-8 text-green-200" />
@@ -104,15 +104,6 @@ export default async function StatementPage(props: {
                             </p>
                         </div>
                         <DollarSign className="h-8 w-8 text-blue-200" />
-                    </CardContent>
-                </Card>
-                <Card className="bg-purple-50/50 border-purple-100">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Predicted Salary (50%)</p>
-                            <p className="text-xl font-bold text-purple-700">₹{formatCurrency(Math.max(0, stats.netProfit / 2))}</p>
-                        </div>
-                        <TrendingUp className="h-8 w-8 text-purple-200" />
                     </CardContent>
                 </Card>
             </div>

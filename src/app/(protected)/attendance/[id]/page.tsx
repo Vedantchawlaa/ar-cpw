@@ -40,7 +40,7 @@ export default async function StaffDetailPage({ params, searchParams }: PageProp
         { label: "Half days", value: summary.halfDays },
         { label: "Leave (deducted)", value: summary.leaves, className: "text-red-600" },
         { label: "Company leave", value: summary.companyLeaves, className: "text-blue-600" },
-        { label: "Unmarked", value: summary.unmarked, className: "text-slate-400" },
+        { label: "Not marked (counted present)", value: summary.unmarked, className: "text-slate-400" },
         { label: "Hours worked", value: formatMinutes(summary.workedMinutes) },
         { label: "Overtime", value: formatMinutes(summary.otMinutes), className: "text-indigo-700" },
         { label: "Sundays worked", value: summary.sundaysWorked, className: "text-teal-700" },

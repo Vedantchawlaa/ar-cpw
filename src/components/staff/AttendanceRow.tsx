@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { clearAttendance, punchNow, saveAttendance, type AttendanceRecord } from "@/lib/actions/staff-actions";
-import { ATTENDANCE_STATUSES, STATUS_LABELS, earnsSundayExtra, formatMinutes, lateMinutes, overtimeMinutes, workedMinutes, type AttendanceStatus } from "@/lib/staff-attendance";
+import { ATTENDANCE_STATUSES, STATUS_LABELS, earnsSundayExtra, isSunday, formatMinutes, lateMinutes, overtimeMinutes, workedMinutes, type AttendanceStatus } from "@/lib/staff-attendance";
 
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
     PRESENT: "bg-green-50 text-green-700 border-green-200",
@@ -114,9 +114,15 @@ export function AttendanceRow({ staffId, date, record, shiftStart, shiftEnd, tit
                 <div className="font-medium text-slate-900">{title}</div>
                 {subtitle && <div className="text-xs text-slate-500">{subtitle}</div>}
                 <div className="flex flex-wrap gap-1.5 mt-1">
-                    {record && (
+                    {record ? (
                         <span className={cn("text-[11px] px-2 py-0.5 rounded-full border font-medium", STATUS_STYLES[record.status as AttendanceStatus])}>
                             {STATUS_LABELS[record.status as AttendanceStatus] ?? record.status}
+                        </span>
+                    ) : isSunday(date) ? (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full border border-slate-200 text-slate-500">Weekly off</span>
+                    ) : (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-green-300 text-green-700" title="No entry for this day, so it counts as present">
+                            Present (not marked)
                         </span>
                     )}
                     {late > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">Late {formatMinutes(late)}</span>}

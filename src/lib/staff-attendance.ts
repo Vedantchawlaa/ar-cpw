@@ -35,11 +35,11 @@ export interface SalarySummary {
     perDay: number;
     payableDays: number; // days employed this month (from the joining date to month end)
     baseSalary: number; // perDay × payableDays; the full salary unless they joined this month
-    present: number;
+    present: number; // includes `unmarked` days
     halfDays: number;
     leaves: number;
     companyLeaves: number;
-    unmarked: number;
+    unmarked: number; // weekdays so far with no entry, counted as present
     deductedDays: number;
     deduction: number;
     otMinutes: number;
@@ -176,10 +176,10 @@ function defaultOtRate(perDay: number, overtime: OvertimeSettings): number {
  * Salary for one month. Pay per day = monthly salary / days in that month.
  * In the joining month, salary covers only the days from `joinedAt` to month end; earlier records are ignored.
  * LEAVE deducts a full day, HALF_DAY half a day; PRESENT and COMPANY_LEAVE are paid.
- * Unmarked days (counted between `countFrom` and `countTo`, inclusive) are reported but not deducted.
+ * Unmarked weekdays (between `countFrom` and `countTo`, inclusive) count as present and are included in `present`.
  * Overtime (minutes after shift end on PRESENT / HALF_DAY days) is paid per hour and added to net salary.
  * Working on a Sunday (PRESENT / HALF_DAY) earns an extra half day's pay; unmarked Sundays are the weekly off.
- * `netToDate` is what has been earned by `countTo`: marked days and Sundays count at pay per day, unmarked days earn nothing.
+ * `netToDate` is what has been earned by `countTo`: every employed day up to then counts at pay per day, less deductions.
  */
 export function calculateMonthlySalary(
     monthlySalary: number,
@@ -212,11 +212,14 @@ export function calculateMonthlySalary(
 
     const from = range?.countFrom ?? keys[0];
     const to = range?.countTo ?? keys[keys.length - 1];
-    const unmarked = keys.filter(k => k >= from && k <= to && !byDate.has(k) && !isSunday(k)).length;
+    // A weekday with no entry (up to `countTo`) counts as present. Unmarked Sundays are the weekly off.
+    const unmarked = employedKeys.filter(k => k >= from && k <= to && !byDate.has(k) && !isSunday(k)).length;
+    present += unmarked;
 
     const payableDays = employedKeys.length;
     const baseSalary = payableDays === totalDays ? monthlySalary : round2(perDay * payableDays);
-    const daysToDate = employedKeys.filter(k => k <= to && (byDate.has(k) || isSunday(k))).length;
+    // Every employed day so far is earned: marked days, unmarked days (present) and Sundays.
+    const daysToDate = employedKeys.filter(k => k <= to).length;
     const baseToDate = daysToDate === payableDays ? baseSalary : round2(perDay * daysToDate);
     const deduction = round2(perDay * deductedDays);
     const otRatePerHour = overtime ? round2(overtime.ratePerHour ?? defaultOtRate(perDay, overtime)) : 0;

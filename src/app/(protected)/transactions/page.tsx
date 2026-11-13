@@ -16,6 +16,8 @@ import { ImportTransactions } from "@/components/transactions/ImportTransactions
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { RealtimeListener } from "@/components/RealtimeListener";
+import { FundAllocationCard } from "@/components/transactions/FundAllocationCard";
+import { getFundAllocation } from "@/lib/actions/fund-allocation-actions";
 
 export default async function TransactionsPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -74,6 +76,8 @@ export default async function TransactionsPage(props: {
     const selectedMonth = month ? parseInt(month) : now.getMonth();
     const selectedYear = year ? parseInt(year) : now.getFullYear();
     const monthlyBalance = range === "month" ? await getMonthlyBalance(selectedMonth, selectedYear) : null;
+    // Fund allocation works per calendar month, ignoring the search box
+    const fundAllocation = range === "month" ? await getFundAllocation(selectedMonth, selectedYear) : null;
 
     // Load weekly bank balance data
     const isMonday = now.getDay() === 1;
@@ -122,10 +126,10 @@ export default async function TransactionsPage(props: {
             </div>
 
             {/* P&L Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-3">
                 <Card className="border-l-4 border-l-green-500 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Income</CardTitle>
+                        <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Total Revenue</CardTitle>
                         <TrendingUp className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
@@ -155,19 +159,18 @@ export default async function TransactionsPage(props: {
                         <p className="text-xs text-muted-foreground mt-1">{stats.netProfit >= 0 ? "You're profitable!" : "In loss for this period"}</p>
                     </CardContent>
                 </Card>
-                <Card className="border-l-4 border-l-purple-500 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-bold text-slate-500 uppercase tracking-wider">Predicted Salary (50%)</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-purple-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-purple-600">
-                            ₹{formatCurrency(Math.max(0, stats.netProfit / 2))}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Based on profit for this period</p>
-                    </CardContent>
-                </Card>
             </div>
+
+            {fundAllocation && (fundAllocation.ok ? (
+                <FundAllocationCard
+                    summary={fundAllocation.summary}
+                    month={fundAllocation.month}
+                    year={fundAllocation.year}
+                    monthLabel={currentViewLabel}
+                />
+            ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{fundAllocation.error}</div>
+            ))}
 
             <div className="grid gap-8 lg:grid-cols-3">
                 {/* Transaction Entry Form & Chart */}

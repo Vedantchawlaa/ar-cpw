@@ -24,7 +24,8 @@ test("leave asked deducts a full day, half day deducts half, company leave is pa
 
     assert.equal(summary.daysInMonth, 30);
     assert.equal(summary.perDay, 1000);
-    assert.equal(summary.present, 1);
+    assert.equal(summary.present, 23); // 1 marked + 22 unmarked weekdays (4 Sundays are the weekly off)
+    assert.equal(summary.unmarked, 22);
     assert.equal(summary.leaves, 1);
     assert.equal(summary.halfDays, 1);
     assert.equal(summary.companyLeaves, 1);
@@ -134,40 +135,45 @@ test("joining mid-month: salary only from the joining date to month end", () => 
     assert.equal(fullMonth.baseSalary, 31000);
 });
 
-test("pay till date: only marked days and Sundays count, unmarked days earn nothing", () => {
+test("pay till date: unmarked weekdays count as present, Sundays are the paid weekly off", () => {
     // September 2026 has 30 days; ₹12,000 → ₹400/day. The 6th is a Sunday.
     const firstDay = calculateMonthlySalary(12000, 2026, 9, [{ date: "2026-09-01", status: "PRESENT" }], { countTo: "2026-09-01" });
     assert.equal(firstDay.netToDate, 400);
     assert.equal(firstDay.netSalary, 12000);
-    assert.equal(calculateMonthlySalary(12000, 2026, 9, [], { countTo: "2026-09-01" }).netToDate, 0);
+    const unmarkedDay = calculateMonthlySalary(12000, 2026, 9, [], { countTo: "2026-09-01" });
+    assert.equal(unmarkedDay.netToDate, 400);
+    assert.equal(unmarkedDay.present, 1);
+    assert.equal(unmarkedDay.unmarked, 1);
 
     const midMonth = calculateMonthlySalary(12000, 2026, 9, [
         { date: "2026-09-01", status: "PRESENT" },         // +400
         { date: "2026-09-02", status: "LEAVE" },           // nothing
         { date: "2026-09-03", status: "HALF_DAY" },        // +200
         { date: "2026-09-04", status: "COMPANY_LEAVE" },   // +400
-    ], { countTo: "2026-09-10" });                         // Sunday the 6th +400; the other days unmarked
+    ], { countTo: "2026-09-10" });                         // Sunday the 6th +400; 5, 7-10 unmarked = present +2000
     assert.equal(midMonth.unmarked, 5);
-    assert.equal(midMonth.netToDate, 1400);
+    assert.equal(midMonth.present, 6);
+    assert.equal(midMonth.netToDate, 3400);
     assert.equal(midMonth.netSalary, 11400);
-    assert.equal(salaryBalance(midMonth.netSalary, [{ type: "BONUS", amount: 500 }], midMonth.netToDate).payToDate, 1900);
+    assert.equal(salaryBalance(midMonth.netSalary, [{ type: "BONUS", amount: 500 }], midMonth.netToDate).payToDate, 3900);
 
-    // Working the Sunday earns the day plus the half day extra.
+    // Working the Sunday earns the day plus the half day extra (on top of the unmarked 1st-5th, present).
     const sunday = calculateMonthlySalary(12000, 2026, 9, [{ date: "2026-09-06", status: "PRESENT" }], { countTo: "2026-09-06" });
-    assert.equal(sunday.netToDate, 600);
+    assert.equal(sunday.netToDate, 2600);
 
     // Fully marked month: till date equals the total, even when pay per day does not divide evenly.
     const marked = monthDateKeys(2026, 10).map(date => ({ date, status: "PRESENT" }));
     const finished = calculateMonthlySalary(10000, 2026, 10, marked);
     assert.equal(finished.netToDate, finished.netSalary);
-    assert.equal(calculateMonthlySalary(10000, 2026, 10, []).netToDate, 1290.32);
+    assert.equal(calculateMonthlySalary(10000, 2026, 10, []).netToDate, 10000); // nothing marked = present all month
 
     // Joined mid-month: counted from the joining date. Not started yet: nothing earned.
     const joined = calculateMonthlySalary(12000, 2026, 9, [
         { date: "2026-09-10", status: "PRESENT" },   // before joining: ignored
         { date: "2026-09-16", status: "PRESENT" },
-    ], { joinedAt: "2026-09-16", countTo: "2026-09-20" });
-    assert.equal(joined.netToDate, 800);
+    ], { joinedAt: "2026-09-16", countTo: "2026-09-20" });  // 16-19 present (17-19 unmarked), 20th Sunday
+    assert.equal(joined.netToDate, 2000);
+    assert.equal(joined.present, 4);
     assert.equal(joined.netSalary, 6000);
     assert.equal(calculateMonthlySalary(12000, 2026, 12, [], { countTo: "2026-11-02" }).netToDate, 0);
 });
