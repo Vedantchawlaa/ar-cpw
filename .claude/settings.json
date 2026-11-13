@@ -7,7 +7,10 @@
       "Bash(echo \"repo: $\\(git config --local user.name\\) <$\\(git config --local user.email\\)>\")",
       "Bash(echo \"global: $\\(git config --global user.name\\) <$\\(git config --global user.email\\)>\")",
       "Bash(echo \"ar-cpw now commits as: $\\(git config user.name\\) <$\\(git config user.email\\)>\")",
-      "Bash(echo \"global \\(unchanged\\): $\\(git config --global user.name\\) <$\\(git config --global user.email\\)>\")"
+      "Bash(echo \"global \\(unchanged\\): $\\(git config --global user.name\\) <$\\(git config --global user.email\\)>\")",
+      "Bash(git rebase *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)"
     ]
   }
 }
