@@ -4,6 +4,7 @@ import { MeasurementEditor } from "@/components/leads/MeasurementEditor";
 import { SizesToShare } from "@/components/leads/SizesToShare";
 import { AccessoryCounter } from "@/components/leads/AccessoryCounter";
 import { LeadForm } from "@/components/leads/LeadForm";
+import { ClientFile, DownloadClientFileButton } from "@/components/leads/ClientFile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -14,10 +15,13 @@ interface PageProps {
     params: Promise<{
         id: string;
     }>;
+    searchParams: Promise<{ tab?: string }>;
 }
 
-export default async function LeadDetailPage({ params }: PageProps) {
+export default async function LeadDetailPage({ params, searchParams }: PageProps) {
     const { id } = await params;
+    const { tab } = await searchParams;
+    const TABS = ["details", "measurements", "sizes", "accessories", "client-file"];
 
     const lead = await getLeadById(id);
 
@@ -39,15 +43,20 @@ export default async function LeadDetailPage({ params }: PageProps) {
                     <h2 className="text-3xl font-bold tracking-tight">{lead.name}</h2>
                     <p className="text-muted-foreground">{lead.city} • {lead.phone}</p>
                 </div>
+                <DownloadClientFileButton leadId={lead.id} />
             </div>
 
-            <Tabs defaultValue="measurements" className="space-y-4">
+            <Tabs defaultValue={tab && TABS.includes(tab) ? tab : "measurements"} className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="details">Lead Details</TabsTrigger>
                     <TabsTrigger value="measurements">Measurements & Sizing</TabsTrigger>
                     <TabsTrigger value="sizes">Sizes to Share</TabsTrigger>
                     <TabsTrigger value="accessories">Accessory Counter</TabsTrigger>
+                    <TabsTrigger value="client-file">Client File</TabsTrigger>
                 </TabsList>
+                <TabsContent value="client-file" className="space-y-4">
+                    <ClientFile leadId={lead.id} />
+                </TabsContent>
                 <TabsContent value="details" className="space-y-4">
                     <div className="max-w-2xl">
                         <div className="rounded-md border p-4 bg-white">

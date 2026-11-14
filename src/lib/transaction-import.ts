@@ -30,6 +30,7 @@ export const EXPENSE_CATEGORIES = [
     "Accessory Purchase",
     "Advertisement",
     "Tools",
+    "Vendor's payout",
 ];
 
 export const INCOME_CATEGORIES = ["Sales", "Car Income", "EXTRA"];
@@ -116,6 +117,7 @@ export function parseType(raw: unknown): TransactionType | null {
 const CATEGORY_RULES: Record<TransactionType, Array<[string, RegExp]>> = {
     EXPENSE: [
         ["Rent", /\brent\b/i],
+        ["Vendor's payout", /\b(vendors?|suppliers?|payouts?)\b/i],
         ["Salary", /\b(salary|salaries|wages?|labou?r|karigar|staff|tailor|stitching)\b/i],
         ["Vehicle maintenance & Fuel", /\b(petrol|petro|diesel|fuels?|cng|filling|hpcl|bpcl|iocl|indian ?oil|bharat petroleum|hp petrol|puncture|puncher|fastag|toll|parking|tyres?|tyer|tube|car wash|engine oil|car service|bike service|i10 service|vehicle|mechanic|motors|moter|service stati\w*|foot mats)\b/i],
         ["Advertisement", /\b(ads?|advert\w*|google ads|facebook\w*|meta|instagram|justdial|indiamart|marketing|canva|pamphlets?|banner|flex|hoarding|promotion)\b/i],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { PieChart, Pencil, Check, Undo2, Plus, Trash2, AlertTriangle, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/Input";
 import { formatCurrency, cn } from "@/lib/utils";
 import { EXPENSE_CATEGORIES } from "@/lib/transaction-import";
 import type { AllocationSummary, BucketAllocation, FundBucketConfig } from "@/lib/fund-allocation";
-import { saveFundBuckets, setFundTransfer } from "@/lib/actions/fund-allocation-actions";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
+import { getBucketTransactions, saveFundBuckets, setFundTransfer, type BucketDetailResult } from "@/lib/actions/fund-allocation-actions";
 
 interface Props {
     summary: AllocationSummary;
@@ -86,9 +87,24 @@ function BucketTile({ bucket: b, month, year }: { bucket: BucketAllocation; mont
     const width = Math.min(100, Number.isFinite(b.usedRatio) ? b.usedRatio * 100 : 100);
     const usedLabel = b.kind === "SAVE" ? "Moved" : "Spent";
     const fullyMoved = b.toMove === 0 && b.moved > 0;
+    const [detailOpen, setDetailOpen] = useState(false);
+
+    const openDetail = (e: React.MouseEvent) => {
+        // Double-clicks on the tile's own buttons and inputs keep their normal behaviour
+        if ((e.target as HTMLElement).closest("button, input, form")) return;
+        if (b.id) setDetailOpen(true);
+    };
 
     return (
-        <div className={cn("rounded-lg border p-3 space-y-2", b.status === "over" && "border-red-200 bg-red-50/40")}>
+        <>
+        {detailOpen && b.id && (
+            <BucketDetailDialog bucket={b} bucketId={b.id} month={month} year={year} onClose={() => setDetailOpen(false)} />
+        )}
+        <div
+            onDoubleClick={openDetail}
+            title="Double-click to see the transactions in this bucket"
+            className={cn("rounded-lg border p-3 space-y-2 cursor-pointer select-none hover:border-slate-300", b.status === "over" && "border-red-200 bg-red-50/40")}
+        >
             <div className="flex items-start justify-between gap-2">
                 <div>
                     <p className="text-sm font-semibold text-slate-900 leading-tight">{b.name}</p>
@@ -156,6 +172,83 @@ function BucketTile({ bucket: b, month, year }: { bucket: BucketAllocation; mont
             )}
             {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
+        </>
+    );
+}
+
+function BucketDetailDialog({ bucket: b, bucketId, month, year, onClose }: { bucket: BucketAllocation; bucketId: string; month: number; year: number; onClose: () => void }) {
+    const [data, setData] = useState<BucketDetailResult | null>(null);
+
+    useEffect(() => {
+        let live = true;
+        getBucketTransactions(bucketId, month, year).then((res) => { if (live) setData(res); });
+        return () => { live = false; };
+    }, [bucketId, month, year]);
+
+    const monthName = new Date(year, month, 1).toLocaleString("en-IN", { month: "long", year: "numeric" });
+
+    return (
+        <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>{b.name} · {monthName}</DialogTitle>
+                    <DialogDescription>
+                        {b.percent}% of revenue = ₹{formatCurrency(b.allocated)}
+                        {b.kind === "SPEND" && b.categories.length > 0 && <> · counts {b.categories.join(", ")}</>}
+                    </DialogDescription>
+                </DialogHeader>
+
+                {!data ? (
+                    <p className="py-6 text-center text-sm text-slate-500">Loading…</p>
+                ) : !data.ok ? (
+                    <p className="py-6 text-center text-sm text-red-600">{data.error}</p>
+                ) : (
+                    <div className="space-y-4">
+                        {b.kind === "SPEND" && (
+                            <div>
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    Spent · {data.spent.length} transaction{data.spent.length === 1 ? "" : "s"} · ₹{formatCurrency(b.used)}
+                                </p>
+                                {data.spent.length === 0 ? (
+                                    <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-500">No expenses in these categories this month.</p>
+                                ) : (
+                                    <div className="max-h-80 divide-y overflow-y-auto rounded-md border">
+                                        {data.spent.map((t) => (
+                                            <div key={t.id} className="flex items-start justify-between gap-3 px-3 py-2 text-sm">
+                                                <div className="min-w-0">
+                                                    <p className="truncate font-medium text-slate-900">{t.description || t.category}</p>
+                                                    <p className="text-xs text-slate-500">
+                                                        {new Date(t.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} · {t.category}
+                                                    </p>
+                                                </div>
+                                                <span className="shrink-0 font-semibold text-red-600">₹{formatCurrency(t.amount)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        <div>
+                            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Moved to account</p>
+                            {data.moved ? (
+                                <div className="flex justify-between rounded-md border px-3 py-2 text-sm">
+                                    <span className="text-slate-500">
+                                        Marked on {new Date(data.moved.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                                    </span>
+                                    <span className="font-semibold text-emerald-600">₹{formatCurrency(data.moved.amount)}</span>
+                                </div>
+                            ) : (
+                                <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-500">Nothing marked as moved yet.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 

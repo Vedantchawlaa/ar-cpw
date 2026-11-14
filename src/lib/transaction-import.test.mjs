@@ -279,3 +279,9 @@ test("bank statement summary block at the bottom is not imported as transactions
         ["2026-10-05", "INCOME", 50000],
     ]);
 });
+
+test("vendor payouts get their own category", () => {
+    assert.equal(guessCategory("NEFT to Sharma Fabrics vendor payout", "EXPENSE"), "Vendor's payout");
+    assert.equal(guessCategory("Payment to supplier", "EXPENSE"), "Vendor's payout");
+    assert.equal(guessCategory("Staff salary", "EXPENSE"), "Salary");
+});

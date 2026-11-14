@@ -51,7 +51,7 @@ export interface AllocationSummary {
 }
 
 export const DEFAULT_FUND_BUCKETS: FundBucketConfig[] = [
-    { name: "Raw material", percent: 55, kind: "SPEND", categories: ["Fabric Purchase", "Accessory Purchase"] },
+    { name: "Raw material", percent: 55, kind: "SPEND", categories: ["Fabric Purchase", "Accessory Purchase", "Vendor's payout"] },
     { name: "Rent, salaries & misc.", percent: 12, kind: "SPEND", categories: ["Rent", "Salary", "Utilities", "Food", "Vehicle maintenance & Fuel", "Other"] },
     { name: "Silver", percent: 10, kind: "SAVE", categories: [] },
     { name: "SIP", percent: 10, kind: "SAVE", categories: [] },

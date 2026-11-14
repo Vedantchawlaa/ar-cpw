@@ -81,7 +81,6 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                     <th className="text-center font-medium px-3 py-3" title="Half days">Half</th>
                                     <th className="text-center font-medium px-3 py-3" title="Leave asked by staff — deducted">Leave</th>
                                     <th className="text-center font-medium px-3 py-3" title="Company leave — paid">Co. leave</th>
-                                    <th className="text-center font-medium px-3 py-3" title="Days so far with no entry — counted as present (already included in Present)">Not marked</th>
                                     <th className="text-right font-medium px-3 py-3">Deduction</th>
                                     <th className="text-right font-medium px-3 py-3" title="Overtime after shift end">OT</th>
                                     <th className="text-right font-medium px-3 py-3" title="Extra half day for each Sunday worked">Sunday</th>
@@ -111,7 +110,6 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                         <td className="px-3 py-3 text-center tabular-nums">{summary.halfDays}</td>
                                         <td className="px-3 py-3 text-center tabular-nums text-red-600">{summary.leaves}</td>
                                         <td className="px-3 py-3 text-center tabular-nums text-blue-600">{summary.companyLeaves}</td>
-                                        <td className="px-3 py-3 text-center tabular-nums text-slate-400">{summary.unmarked}</td>
                                         <td className="px-3 py-3 text-right tabular-nums text-red-600">{summary.deduction > 0 ? `− ${formatRupees(summary.deduction)}` : "—"}</td>
                                         <td className="px-3 py-3 text-right tabular-nums text-indigo-700 whitespace-nowrap">
                                             {summary.otMinutes > 0 ? (
@@ -140,7 +138,7 @@ export function SalarySheet({ year, month, date, today, rows }: SalarySheetProps
                                 <tr>
                                     <td className="px-4 py-3">Total</td>
                                     <td className="px-3 py-3 text-right tabular-nums">{formatRupees(totals.salary)}</td>
-                                    <td colSpan={5} />
+                                    <td colSpan={4} />
                                     <td className="px-3 py-3 text-right tabular-nums text-red-600">{totals.deduction > 0 ? `− ${formatRupees(totals.deduction)}` : "—"}</td>
                                     <td className="px-3 py-3 text-right tabular-nums text-indigo-700">{totals.otPay > 0 ? `+ ${formatRupees(totals.otPay)}` : "—"}</td>
                                     <td className="px-3 py-3 text-right tabular-nums text-teal-700">{totals.sundayPay > 0 ? `+ ${formatRupees(totals.sundayPay)}` : "—"}</td>

@@ -68,11 +68,8 @@ export function AttendanceRow({ staffId, date, record, shiftStart, shiftEnd, tit
     };
 
     const handleSave = () => {
-        const effectiveStatus = status || (punchIn ? "PRESENT" : "");
-        if (!effectiveStatus) {
-            toast.error("Choose a status or enter a punch-in time.");
-            return;
-        }
+        // No status chosen means present, the default
+        const effectiveStatus = status || "PRESENT";
         run(() => saveAttendance(staffId, date, {
             status: effectiveStatus as AttendanceStatus,
             punchIn: punchIn || null,
@@ -121,8 +118,8 @@ export function AttendanceRow({ staffId, date, record, shiftStart, shiftEnd, tit
                     ) : isSunday(date) ? (
                         <span className="text-[11px] px-2 py-0.5 rounded-full border border-slate-200 text-slate-500">Weekly off</span>
                     ) : (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-green-300 text-green-700" title="No entry for this day, so it counts as present">
-                            Present (not marked)
+                        <span className={cn("text-[11px] px-2 py-0.5 rounded-full border font-medium", STATUS_STYLES.PRESENT)}>
+                            {STATUS_LABELS.PRESENT}
                         </span>
                     )}
                     {late > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">Late {formatMinutes(late)}</span>}
@@ -139,7 +136,7 @@ export function AttendanceRow({ staffId, date, record, shiftStart, shiftEnd, tit
                     className="col-span-2 sm:col-span-1 h-10 rounded-md border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950"
                     aria-label="Status"
                 >
-                    <option value="">Not marked</option>
+                    <option value="">Present (default)</option>
                     {ATTENDANCE_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                 </select>
                 <TimeField label="In" value={punchIn} onChange={setPunchIn} disabled={onLeave}

@@ -1,6 +1,6 @@
 import db from "@/lib/db";
 import { isPieceKind, isStockKind, isUsedUp, type StockKind } from "@/lib/stock-units";
-import { planWithStock, type OptimizerOptions, type ProductTrackPiece, type StockTrackPiece } from "@/lib/track-optimizer";
+import { planWithStock, type OptimizerOptions, type ProductTrackPiece, type StockTrackPiece, type StockAwarePlan } from "@/lib/track-optimizer";
 import { Actor } from "./types";
 
 // Stock is kept two ways, by product kind:
@@ -309,6 +309,8 @@ export interface AppliedTrackStock {
     piecesUsed: number;
     piecesShortened: number;
     offcutsAdded: number;
+    /** The exact plan that was booked (saved from now on; older bookings do not have it) */
+    plan?: StockAwarePlan;
 }
 
 /** Plans a job's tracks against the current stock (no changes made). */
@@ -345,6 +347,7 @@ export async function applyTrackPlan(
         piecesUsed: 0,
         piecesShortened: 0,
         offcutsAdded: 0,
+        plan,
     };
 
     try {

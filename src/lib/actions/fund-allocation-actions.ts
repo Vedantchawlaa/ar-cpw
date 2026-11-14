@@ -64,6 +64,46 @@ export async function getFundAllocation(month: number, year: number): Promise<Fu
     }
 }
 
+export interface BucketTransactionRow {
+    id: string;
+    date: string; // ISO
+    category: string;
+    description: string | null;
+    amount: number;
+}
+
+export type BucketDetailResult =
+    | { ok: true; spent: BucketTransactionRow[]; moved: { amount: number; updatedAt: string } | null }
+    | { ok: false; error: string };
+
+/** The expenses counted against a bucket in a month, plus the amount marked as moved. */
+export async function getBucketTransactions(bucketId: string, month: number, year: number): Promise<BucketDetailResult> {
+    if (!(await isAdminUser())) return { ok: false, error: "Only admins can view this." };
+    if (!Number.isInteger(month) || month < 0 || month > 11 || !Number.isInteger(year)) return { ok: false, error: "Invalid month." };
+    try {
+        const bucket = await db.fundBucket.findUnique({ where: { id: bucketId } });
+        if (!bucket) return { ok: false, error: "Bucket not found." };
+        const start = new Date(year, month, 1);
+        const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+        const spent = bucket.kind === "SPEND" && bucket.categories.length > 0
+            ? await db.transaction.findMany({
+                where: { type: "EXPENSE", category: { in: bucket.categories }, date: { gte: start, lte: end } },
+                orderBy: { date: "desc" },
+                select: { id: true, date: true, category: true, description: true, amount: true },
+            })
+            : [];
+        const transfer = await db.fundTransfer.findUnique({ where: { bucketId_month_year: { bucketId, month, year } } });
+        return {
+            ok: true,
+            spent: spent.map((t) => ({ ...t, date: t.date.toISOString() })),
+            moved: transfer ? { amount: transfer.amount, updatedAt: transfer.updatedAt.toISOString() } : null,
+        };
+    } catch (error) {
+        console.error("Failed to load bucket transactions:", error);
+        return { ok: false, error: "Could not load transactions." };
+    }
+}
+
 const BucketSchema = z.object({
     id: z.string().optional(),
     name: z.string().trim().min(1).max(60),

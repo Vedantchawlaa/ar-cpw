@@ -77,14 +77,14 @@ async function DashboardStats({ range, from, to }: { range: string; from?: strin
     let cashIn = 0, cashOut = 0;
     let openingBalance: number | null = null;
     let currentBalance: number | null = null;
+    let currentBalanceIsActual = false;
     let dbError = false, errorMessage = "";
 
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
 
     try {
-        const [rev, lc, qc, cc, rq, txns, monthBal] = await Promise.all([
-            (prisma as any).quotation.aggregate({ where: { status: "SALE", ...vf, ...df }, _sum: { receivedAmount: true } }),
+        const [lc, qc, cc, rq, txns, monthBal] = await Promise.all([
             (prisma as any).lead.count({ where: { ...vf, ...df } }),
             (prisma as any).quotation.count({ where: { ...vf, ...df } }),
             (prisma as any).lead.count({ where: { ...vf, ...df, quotations: { some: { status: "SALE" } } } }),
@@ -92,20 +92,48 @@ async function DashboardStats({ range, from, to }: { range: string; from?: strin
             (prisma as any).transaction.groupBy({ by: ["type"], where: { ...tdf }, _sum: { amount: true } }),
             (prisma as any).monthlyBalance.findUnique({ where: { month_year: { month: thisMonth, year: thisYear } } }),
         ]);
-        totalRevenue = rev._sum.receivedAmount || 0;
         leadsCount = lc; quotationsCount = qc; convertedLeadsCount = cc; recentQuotations = rq;
         for (const t of txns) {
             if (t.type === "INCOME") cashIn = t._sum.amount || 0;
             if (t.type === "EXPENSE") cashOut = t._sum.amount || 0;
         }
+        // Total revenue = cash in: all income transactions for the period
+        totalRevenue = cashIn;
         if (monthBal) {
             openingBalance = monthBal.startingBalance;
-            currentBalance = monthBal.endingBalance ?? null;
+        } else {
+            // No record yet: carry forward last month's actual cash, as the Transactions page does
+            const prev = await (prisma as any).monthlyBalance.findUnique({
+                where: { month_year: { month: thisMonth === 0 ? 11 : thisMonth - 1, year: thisMonth === 0 ? thisYear - 1 : thisYear } },
+            });
+            if (prev?.endingBalance != null) openingBalance = prev.endingBalance;
+        }
+
+        if (monthBal?.endingBalance != null) {
+            // Actual cash entered in Cash Reconciliation wins
+            currentBalance = monthBal.endingBalance;
+            currentBalanceIsActual = true;
+        } else if (openingBalance !== null) {
+            // Otherwise: opening balance + this month's net flow (the opening balance is for this month,
+            // so use this month's flow even when the dashboard shows another period)
+            let monthIn = cashIn, monthOut = cashOut;
+            if (range !== "curr") {
+                const monthTxns = await (prisma as any).transaction.groupBy({
+                    by: ["type"],
+                    where: { date: { gte: new Date(thisYear, thisMonth, 1), lte: new Date(thisYear, thisMonth + 1, 0, 23, 59, 59, 999) } },
+                    _sum: { amount: true },
+                });
+                monthIn = monthTxns.find((t: any) => t.type === "INCOME")?._sum.amount || 0;
+                monthOut = monthTxns.find((t: any) => t.type === "EXPENSE")?._sum.amount || 0;
+            }
+            currentBalance = openingBalance + monthIn - monthOut;
         }
     } catch (e: any) {
         console.error("Dashboard fetch failed:", e);
         dbError = true; errorMessage = e.message || String(e);
     }
+
+    const periodLabel = ({ "24h": "the last 24 hours", "48h": "the last 48 hours", "7d": "the last 7 days", "14d": "the last 14 days", "1mo": "the last month", curr: "this month", custom: "the selected dates" } as Record<string, string>)[range] ?? "the selected period";
 
     const conversionRate = leadsCount > 0 ? Math.min((convertedLeadsCount / leadsCount) * 100, 100) : 0;
 
@@ -134,7 +162,7 @@ async function DashboardStats({ range, from, to }: { range: string; from?: strin
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">₹{formatCurrency(Math.round(totalRevenue))}</div>
-                        <p className="text-xs text-muted-foreground mt-1">{range === "all" ? "Lifetime earnings" : `Revenue for ${range}`}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{range === "all" ? "Lifetime earnings" : `Cash in for ${periodLabel}`}</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow relative overflow-hidden group">
@@ -145,7 +173,7 @@ async function DashboardStats({ range, from, to }: { range: string; from?: strin
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{leadsCount}</div>
-                        <p className="text-xs text-muted-foreground mt-1">{range === "all" ? "Total customer pool" : `Acquired in ${range}`}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{range === "all" ? "Total customer pool" : `Acquired in ${periodLabel}`}</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow relative overflow-hidden group">
@@ -156,7 +184,7 @@ async function DashboardStats({ range, from, to }: { range: string; from?: strin
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{quotationsCount}</div>
-                        <p className="text-xs text-muted-foreground mt-1">{range === "all" ? "Total shared estimates" : `Created in ${range}`}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{range === "all" ? "Total shared estimates" : `Created in ${periodLabel}`}</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow relative overflow-hidden group">
@@ -215,9 +243,13 @@ async function DashboardStats({ range, from, to }: { range: string; from?: strin
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Balance</p>
                                 <p className="text-base font-extrabold text-slate-800">
-                                    {currentBalance !== null ? `₹${formatCurrency(currentBalance)}` : <span className="text-slate-400 text-xs font-medium">Not entered</span>}
+                                    {currentBalance !== null
+                                        ? `${currentBalance < 0 ? "-" : ""}₹${formatCurrency(Math.abs(Math.round(currentBalance * 100) / 100))}`
+                                        : <span className="text-slate-400 text-xs font-medium">Set opening balance first</span>}
                                 </p>
-                                <p className="text-[10px] text-slate-400">Actual cash in hand</p>
+                                <p className="text-[10px] text-slate-400">
+                                    {currentBalanceIsActual ? "Actual cash in hand (Cash Reconciliation)" : "Opening balance + this month's net flow"}
+                                </p>
                             </div>
                         </div>
                     </div>

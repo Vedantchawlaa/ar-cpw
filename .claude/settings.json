@@ -10,7 +10,13 @@
       "Bash(echo \"global \\(unchanged\\): $\\(git config --global user.name\\) <$\\(git config --global user.email\\)>\")",
       "Bash(git rebase *)",
       "Bash(git remote *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "Bash(GIT_TERMINAL_PROMPT=0 GIT_ASKPASS= SSH_ASKPASS= git -c credential.helper= -c credential.helper=osxkeychain push --dry-run origin stock-manager:main)",
+      "Bash(awk -F: '{print $3}')",
+      "Bash(node --experimental-strip-types --test src/lib/client-file.test.mjs)",
+      "Bash(grep -E \"^\\(esbuild|tsx\\)$\")",
+      "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")",
+      "Bash(/usr/bin/python3 -c \"import Quartz; print\\('quartz ok'\\)\")"
     ]
   }
 }
