@@ -31,6 +31,11 @@ export const EXPENSE_CATEGORIES = [
     "Advertisement",
     "Tools",
     "Vendor's payout",
+    "Silver",
+    "SIP",
+    "EMI",
+    "Loan repayment",
+    "Home",
 ];
 
 export const INCOME_CATEGORIES = ["Sales", "Car Income", "EXTRA"];
@@ -123,6 +128,11 @@ const CATEGORY_RULES: Record<TransactionType, Array<[string, RegExp]>> = {
         ["Advertisement", /\b(ads?|advert\w*|google ads|facebook\w*|meta|instagram|justdial|indiamart|marketing|canva|pamphlets?|banner|flex|hoarding|promotion)\b/i],
         ["Fabric Purchase", /\b(fabrics?|cloth|textiles?|d ?decor|sheer|lining|blackout|velvet|linen)\b/i],
         ["Accessory Purchase", /\b(tracks?|rods?|brackets?|hooks?|rings?|tapes?|accessor\w+|hardware|runners?|finials?|motors?|blinds?|eyelets?|channel)\b/i],
+        ["Silver", /\b(silver|chandi|bullion)\b/i],
+        ["SIP", /\b(sip|mutual funds?|groww|zerodha|kuvera|coin by zerodha|paytm money)\b/i],
+        ["EMI", /\b(emis?|bajaj finance|home credit)\b/i],
+        ["Loan repayment", /\b(loans?|repay\w*|udhaa?r|karz|karza)\b/i],
+        ["Home", /\b(home expenses?|household|ghar|kirana|grocery|groceries)\b/i],
         ["Utilities", /\b(electricity|bijli|bses|recharge|airtel|jio|vodafone|bsnl|broadband|wifi|internet|water bill|gas|mobile bill|phone bill|dth|bill)\b/i],
         ["Food", /\b(swiggy|zomato|restaurant|food|lunch|dinner|breakfast|tea|chai|coffee|snacks?|cafe|dhaba|sweets?|mishthan|jalebi|momos?|bakery|pizza|biryani)\b/i],
     ],

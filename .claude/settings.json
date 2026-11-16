@@ -16,7 +16,9 @@
       "Bash(node --experimental-strip-types --test src/lib/client-file.test.mjs)",
       "Bash(grep -E \"^\\(esbuild|tsx\\)$\")",
       "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")",
-      "Bash(/usr/bin/python3 -c \"import Quartz; print\\('quartz ok'\\)\")"
+      "Bash(/usr/bin/python3 -c \"import Quartz; print\\('quartz ok'\\)\")",
+      "Bash(node --experimental-strip-types --test src/lib/daily-balance.test.mjs)",
+      "Bash(git rm *)"
     ]
   }
 }

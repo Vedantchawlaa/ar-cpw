@@ -194,7 +194,7 @@ function BucketDetailDialog({ bucket: b, bucketId, month, year, onClose }: { buc
                     <DialogTitle>{b.name} · {monthName}</DialogTitle>
                     <DialogDescription>
                         {b.percent}% of revenue = ₹{formatCurrency(b.allocated)}
-                        {b.kind === "SPEND" && b.categories.length > 0 && <> · counts {b.categories.join(", ")}</>}
+                        {b.categories.length > 0 && <> · counts {b.categories.join(", ")}</>}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -204,10 +204,10 @@ function BucketDetailDialog({ bucket: b, bucketId, month, year, onClose }: { buc
                     <p className="py-6 text-center text-sm text-red-600">{data.error}</p>
                 ) : (
                     <div className="space-y-4">
-                        {b.kind === "SPEND" && (
+                        {b.categories.length > 0 && (
                             <div>
                                 <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                    Spent · {data.spent.length} transaction{data.spent.length === 1 ? "" : "s"} · ₹{formatCurrency(b.used)}
+                                    {b.kind === "SAVE" ? "Moved by transactions" : "Spent"} · {data.spent.length} transaction{data.spent.length === 1 ? "" : "s"} · ₹{formatCurrency(data.spent.reduce((s, t) => s + t.amount, 0))}
                                 </p>
                                 {data.spent.length === 0 ? (
                                     <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-500">No expenses in these categories this month.</p>
@@ -229,7 +229,7 @@ function BucketDetailDialog({ bucket: b, bucketId, month, year, onClose }: { buc
                             </div>
                         )}
                         <div>
-                            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Moved to account</p>
+                            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{b.kind === "SAVE" ? "Marked as moved" : "Moved to account"}</p>
                             {data.moved ? (
                                 <div className="flex justify-between rounded-md border px-3 py-2 text-sm">
                                     <span className="text-slate-500">
@@ -262,7 +262,7 @@ function BucketEditor({ buckets, onDone }: { buckets: BucketAllocation[]; onDone
     const allCategories = [...new Set([...EXPENSE_CATEGORIES, ...rows.flatMap((r) => r.categories)])];
     const total = Math.round(rows.reduce((s, r) => s + (Number(r.percentText) || 0), 0) * 100) / 100;
     const update = (i: number, patch: Partial<(typeof rows)[number]>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
-    const ownerOf = (category: string) => rows.findIndex((r) => r.kind === "SPEND" && r.categories.includes(category));
+    const ownerOf = (category: string) => rows.findIndex((r) => r.categories.includes(category));
 
     const toggleCategory = (i: number, category: string) => {
         setRows((rs) =>
@@ -299,15 +299,16 @@ function BucketEditor({ buckets, onDone }: { buckets: BucketAllocation[]; onDone
                             className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                         >
                             <option value="SPEND">Spending (track expenses)</option>
-                            <option value="SAVE">Move to account (track transfers)</option>
+                            <option value="SAVE">Move to account (transfers / linked expenses)</option>
                         </select>
                         <Button variant="ghost" size="sm" className="h-9 px-2 text-red-600" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))} title="Remove bucket">
                             <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
-                    {r.kind === "SPEND" ? (
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Expense categories counted here</p>
+                    <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                {r.kind === "SAVE" ? "Expense categories that count as moved (optional)" : "Expense categories counted here"}
+                            </p>
                             <div className="flex flex-wrap gap-1">
                                 {allCategories.map((c) => {
                                     const on = r.categories.includes(c);
@@ -329,10 +330,10 @@ function BucketEditor({ buckets, onDone }: { buckets: BucketAllocation[]; onDone
                                     );
                                 })}
                             </div>
-                        </div>
-                    ) : (
-                        <p className="text-xs text-muted-foreground">Counts as used once you mark it moved into this account.</p>
-                    )}
+                            {r.kind === "SAVE" && (
+                                <p className="mt-1 text-xs text-muted-foreground">Money counts as moved when you record an expense in these categories or mark it moved.</p>
+                            )}
+                    </div>
                 </div>
             ))}
 

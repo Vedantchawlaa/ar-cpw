@@ -5,9 +5,11 @@
 //  - SPEND: money is used by expenses. "Used" = expense transactions whose
 //    category is linked to the bucket (e.g. Fabric Purchase -> Raw material).
 //  - SAVE:  money is moved to another account (silver, SIP, loan). "Used" =
-//    the amount marked as moved for that month.
-// Every bucket (SPEND too) tracks how much was moved into its account. These
-// moves are stored apart from transactions so they never change P&L figures.
+//    "moved" = the amount marked as moved for that month PLUS expense
+//    transactions in the bucket's categories (a "SIP" expense is money moved
+//    to the SIP account, so it counts as moved).
+// Every bucket (SPEND too) can also have amounts marked as moved. Those marks
+// are stored apart from transactions so they never change P&L figures.
 //
 // Pure functions only (no DB, no path aliases) so they can be unit tested.
 
@@ -53,9 +55,9 @@ export interface AllocationSummary {
 export const DEFAULT_FUND_BUCKETS: FundBucketConfig[] = [
     { name: "Raw material", percent: 55, kind: "SPEND", categories: ["Fabric Purchase", "Accessory Purchase", "Vendor's payout"] },
     { name: "Rent, salaries & misc.", percent: 12, kind: "SPEND", categories: ["Rent", "Salary", "Utilities", "Food", "Vehicle maintenance & Fuel", "Other"] },
-    { name: "Silver", percent: 10, kind: "SAVE", categories: [] },
-    { name: "SIP", percent: 10, kind: "SAVE", categories: [] },
-    { name: "Loan repayment & cash flow", percent: 7, kind: "SAVE", categories: [] },
+    { name: "Silver", percent: 8, kind: "SAVE", categories: ["Silver"] },
+    { name: "SIP", percent: 8, kind: "SAVE", categories: ["SIP"] },
+    { name: "Loans, cashflow & Home expense", percent: 11, kind: "SAVE", categories: ["EMI", "Loan repayment", "Home"] },
     { name: "Tools", percent: 5, kind: "SPEND", categories: ["Tools"] },
     { name: "Ads", percent: 1, kind: "SPEND", categories: ["Advertisement"] },
 ];
@@ -74,12 +76,10 @@ export function validateBuckets(buckets: FundBucketConfig[]): string | null {
         names.add(name.toLowerCase());
         if (!Number.isFinite(b.percent) || b.percent < 0 || b.percent > 100) return `"${name}" needs a percentage between 0 and 100.`;
         if (b.kind !== "SPEND" && b.kind !== "SAVE") return `"${name}" has an unknown type.`;
-        if (b.kind === "SPEND") {
-            for (const c of b.categories) {
-                const owner = claimed.get(c);
-                if (owner) return `"${c}" is linked to both "${owner}" and "${name}".`;
-                claimed.set(c, name);
-            }
+        for (const c of b.categories) {
+            const owner = claimed.get(c);
+            if (owner) return `"${c}" is linked to both "${owner}" and "${name}".`;
+            claimed.set(c, name);
         }
     }
     const total = round2(buckets.reduce((s, b) => s + b.percent, 0));
@@ -107,17 +107,15 @@ export function computeAllocation(
     const claimed = new Set<string>();
     const rows: BucketAllocation[] = buckets.map((b) => {
         const allocated = round2((income * b.percent) / 100);
-        const moved = round2(transfers[b.id ?? b.name] || 0);
-        let used = 0;
-        if (b.kind === "SPEND") {
-            for (const c of b.categories) {
-                used += expenseByCategory.get(c) || 0;
-                claimed.add(c);
-            }
-        } else {
-            used = moved;
+        let linked = 0; // expenses in this bucket's categories
+        for (const c of b.categories) {
+            linked += expenseByCategory.get(c) || 0;
+            claimed.add(c);
         }
-        used = round2(used);
+        const marked = transfers[b.id ?? b.name] || 0;
+        // SPEND: linked expenses are spending. SAVE: they are money moved to the account.
+        const moved = round2(b.kind === "SAVE" ? marked + linked : marked);
+        const used = round2(b.kind === "SAVE" ? moved : linked);
         const usedRatio = allocated > 0 ? used / allocated : used > 0 ? Infinity : 0;
         return {
             id: b.id,

@@ -1,7 +1,7 @@
 -- Fund allocation: FundBucket and FundTransfer tables. Additive only.
 -- Apply with: npx prisma db execute --file prisma/sql/2026-11-13-fund-allocation.sql --schema prisma/schema.prisma
 -- (not `prisma db push` - see 2026-10-24-stock-manager.sql for why)
--- Buckets are seeded by the app (55/12/10/10/7/5/1) the first time the Transactions page loads.
+-- Buckets are seeded by the app (55/12/8/8/11/5/1) the first time the Transactions page loads.
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS "public"."FundBucket" (

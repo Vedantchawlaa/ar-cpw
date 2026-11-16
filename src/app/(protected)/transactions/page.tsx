@@ -1,10 +1,11 @@
 import { getPnLStats, getTransactions } from "@/lib/actions/transaction-actions";
 import { getMonthlyBalance } from "@/lib/actions/balance-actions";
-import { getThisWeekBankBalance, getWeeklyBankHistory } from "@/lib/actions/bank-balance-actions";
+import { getBalanceCheckHistory } from "@/lib/actions/bank-balance-actions";
+import { businessNow } from "@/lib/staff-attendance";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { TransactionList } from "@/components/transactions/TransactionList";
 import { BalanceWidget } from "@/components/transactions/BalanceWidget";
-import { MondayBankPrompt } from "@/components/transactions/MondayBankPrompt";
+import { DailyBalanceCheck } from "@/components/transactions/DailyBalanceCheck";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 // @ts-ignore
 import { TrendingUp, TrendingDown, DollarSign, ListFilter } from "lucide-react";
@@ -79,12 +80,9 @@ export default async function TransactionsPage(props: {
     // Fund allocation works per calendar month, ignoring the search box
     const fundAllocation = range === "month" ? await getFundAllocation(selectedMonth, selectedYear) : null;
 
-    // Load weekly bank balance data
-    const isMonday = now.getDay() === 1;
-    const [thisWeekEntry, weeklyHistory] = await Promise.all([
-        getThisWeekBankBalance(),
-        getWeeklyBankHistory(12),
-    ]);
+    // Daily bank + cash check
+    const balanceChecks = await getBalanceCheckHistory(14);
+    const todayCheck = balanceChecks[0]?.day === businessNow().date ? balanceChecks[0] : null;
 
     // Aggregate expenses for the pie chart using all period transactions
     const expenseDataMap: Record<string, number> = {};
@@ -188,19 +186,7 @@ export default async function TransactionsPage(props: {
                                 carriedForward={monthlyBalance?.carriedForward ?? false}
                             />
                         )}
-                        <MondayBankPrompt
-                            isMonday={isMonday}
-                            thisWeekEntry={thisWeekEntry ? {
-                                ...thisWeekEntry,
-                                weekStart: thisWeekEntry.weekStart instanceof Date
-                                    ? thisWeekEntry.weekStart.toISOString()
-                                    : thisWeekEntry.weekStart,
-                            } : null}
-                            history={(weeklyHistory as any[]).map((h: any) => ({
-                                ...h,
-                                weekStart: h.weekStart instanceof Date ? h.weekStart.toISOString() : h.weekStart,
-                            }))}
-                        />
+                        <DailyBalanceCheck key={todayCheck?.id ?? "none"} today={todayCheck} history={balanceChecks} />
                         <ExpensePieChart data={expenseData} />
                     </div>
                 </div>

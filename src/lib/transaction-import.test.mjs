@@ -214,7 +214,7 @@ test("ledger workbook: Total column used when Amount is blank, sheet name decide
         [46286, "Ads (lead gen)", "Meta Ads Manager", "Facebook/Instagram ads", 2119, 381, 2500, "Y", null],
     ], "2026-10-05", "CPW_Sept2026_Ledger.xlsx", "Expenses");
     assert.deepEqual(pick(expenses.rows), [
-        ["2026-09-03", "EXPENSE", 2933, "Car EMI", "Muthoot Capital - Personal"],
+        ["2026-09-03", "EXPENSE", 2933, "EMI", "Muthoot Capital - Personal"],
         ["2026-09-10", "EXPENSE", 591, "Vehicle maintenance & Fuel", "Shri Shyam Filling (CNG) - Personal"],
         ["2026-09-19", "EXPENSE", 15000, "Accessory Purchase", "Super Industries - Balance payment"],
         ["2026-09-21", "EXPENSE", 2500, "Advertisement", "Meta Ads Manager - Facebook/Instagram ads"],
@@ -284,4 +284,23 @@ test("vendor payouts get their own category", () => {
     assert.equal(guessCategory("NEFT to Sharma Fabrics vendor payout", "EXPENSE"), "Vendor's payout");
     assert.equal(guessCategory("Payment to supplier", "EXPENSE"), "Vendor's payout");
     assert.equal(guessCategory("Staff salary", "EXPENSE"), "Salary");
+});
+
+test("silver and SIP payments get their own categories", () => {
+    assert.equal(guessCategory("Chandi purchase from jeweller", "EXPENSE"), "Silver");
+    assert.equal(guessCategory("Silver coins", "EXPENSE"), "Silver");
+    assert.equal(guessCategory("NACH SIP Axis Mutual Fund", "EXPENSE"), "SIP");
+    assert.equal(guessCategory("Groww monthly", "EXPENSE"), "SIP");
+    assert.equal(guessCategory("Silver grey blackout fabric", "EXPENSE"), "Fabric Purchase"); // fabric wins
+});
+
+test("EMI and home expenses get their own categories", () => {
+    assert.equal(guessCategory("Car loan EMI", "EXPENSE"), "EMI");
+    assert.equal(guessCategory("Bajaj Finance NACH", "EXPENSE"), "EMI");
+    assert.equal(guessCategory("Ghar ka kirana", "EXPENSE"), "Home");
+    assert.equal(guessCategory("Household items", "EXPENSE"), "Home");
+    assert.equal(guessCategory("Loan repayment to Sharma ji", "EXPENSE"), "Loan repayment");
+    assert.equal(guessCategory("Udhar wapas", "EXPENSE"), "Loan repayment");
+    assert.equal(guessCategory("Home loan EMI", "EXPENSE"), "EMI"); // EMI wording wins
+    assert.equal(guessCategory("NACH SIP Axis Mutual Fund", "EXPENSE"), "SIP");
 });

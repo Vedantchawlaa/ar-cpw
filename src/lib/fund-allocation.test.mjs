@@ -13,7 +13,7 @@ test("income is split by percentage", () => {
         { type: "INCOME", amount: 40000, category: "EXTRA" },
     ]);
     assert.equal(s.income, 100000);
-    assert.deepEqual(s.buckets.map((b) => b.allocated), [55000, 12000, 10000, 10000, 7000, 5000, 1000]);
+    assert.deepEqual(s.buckets.map((b) => b.allocated), [55000, 12000, 8000, 8000, 11000, 5000, 1000]);
     assert.equal(s.buckets.reduce((t, b) => t + b.allocated, 0), 100000);
 });
 
@@ -27,8 +27,10 @@ test("spend buckets count linked expenses, save buckets count transfers", () => 
             { type: "EXPENSE", amount: 5000, category: "Accessory Purchase" },
             { type: "EXPENSE", amount: 1500, category: "Advertisement" },
             { type: "EXPENSE", amount: 800, category: "Courier" },
+            { type: "EXPENSE", amount: 4000, category: "Silver" },
+            { type: "EXPENSE", amount: 8000, category: "SIP" },
         ],
-        { b3: 10000, b2: 4000, b0: 15000 },
+        { b4: 11000, b0: 15000 },
     );
     const by = Object.fromEntries(s.buckets.map((b) => [b.name, b]));
     // Spend buckets: only what is left after spending is to be moved
@@ -44,9 +46,17 @@ test("spend buckets count linked expenses, save buckets count transfers", () => 
     assert.equal(by["Ads"].used, 1500);
     assert.equal(by["Ads"].status, "over");
     assert.equal(by["Ads"].remaining, -500);
-    assert.equal(by["SIP"].used, 10000);
+    // Silver and SIP transactions count as money moved to those accounts
+    assert.equal(by["SIP"].moved, 8000);
+    assert.equal(by["Silver"].moved, 4000);
+    assert.equal(by["SIP"].used, 8000);
     assert.equal(by["SIP"].status, "near");
-    assert.equal(by["Silver"].remaining, 6000);
+    assert.equal(by["Silver"].used, 4000);
+    assert.equal(by["Silver"].remaining, 4000);
+    assert.equal(by["Silver"].toMove, 4000);
+    // Loan is still a move-to-account bucket: marking it moved uses it up
+    assert.equal(by["Loans, cashflow & Home expense"].used, 11000);
+    assert.equal(by["Loans, cashflow & Home expense"].toMove, 0);
     assert.deepEqual(s.unassigned, [{ category: "Courier", amount: 800 }]);
 });
 
@@ -65,4 +75,17 @@ test("validateBuckets rejects bad totals, duplicates and shared categories", () 
     assert.match(validateBuckets(base.map((b, i) => (i === 5 ? { ...b, categories: ["Rent"] } : b))), /both/);
     assert.match(validateBuckets([]), /at least one/);
     assert.equal(validateBuckets([{ name: "All", percent: 100, kind: "SAVE", categories: [] }]), null);
+});
+
+test("move-to-account bucket: transaction and marked amount add up", () => {
+    const buckets = DEFAULT_FUND_BUCKETS.map((b, i) => ({ ...b, id: `b${i}` }));
+    const s = computeAllocation(buckets, [
+        { type: "INCOME", amount: 100000, category: "Sales" },
+        { type: "EXPENSE", amount: 5000, category: "SIP" },
+    ], { b3: 2000 });
+    const sip = s.buckets.find((b) => b.name === "SIP");
+    assert.equal(sip.moved, 7000);
+    assert.equal(sip.toMove, 1000);
+    assert.equal(sip.remaining, 1000);
+    assert.deepEqual(s.unassigned, []); // SIP is claimed by its bucket
 });

@@ -3,84 +3,84 @@
 import db from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { getMondayOf } from "@/lib/date-utils";
+import { businessNow } from "@/lib/staff-attendance";
+import { netBetween, withGaps, type CheckWithGap, type DayTransaction } from "@/lib/daily-balance";
+
+// Daily check of bank + cash balances. Stored in the WeeklyBankBalance table
+// (from when this was a Monday check), one row per business day: `weekStart`
+// holds that day at 00:00 UTC.
 
 async function isAdminUser() {
     const session = await auth();
     if (!session?.user) return false;
-    if ((session.user as any).role === 'admin') return true;
+    if ((session.user as { role?: string }).role === "admin") return true;
     if (session.user.email) {
-        const dbUser = await (db as any).user.findUnique({
-            where: { email: session.user.email },
-            select: { role: true }
-        });
-        return dbUser?.role === 'admin';
+        const dbUser = await db.user.findUnique({ where: { email: session.user.email }, select: { role: true } });
+        return dbUser?.role === "admin";
     }
     return false;
 }
 
+const dayToDate = (day: string) => new Date(`${day}T00:00:00.000Z`);
+const dateToDay = (d: Date) => d.toISOString().slice(0, 10);
 
-/** Get this week's bank balance record (null if not entered yet) */
-export async function getThisWeekBankBalance() {
-    if (!await isAdminUser()) return null;
-    const monday = getMondayOf(new Date());
-    try {
-        return await (db as any).weeklyBankBalance.findUnique({
-            where: { weekStart: monday },
-        });
-    } catch (e) {
-        return null;
-    }
+/** Transactions from `fromDay` to today, keyed by business (India) day. */
+async function transactionsSince(fromDay: string): Promise<DayTransaction[]> {
+    const rows = await db.transaction.findMany({
+        // a day early, so times late in the evening (UTC) still land on the right India day
+        where: { date: { gte: new Date(dayToDate(fromDay).getTime() - 86400000) } },
+        select: { date: true, type: true, amount: true },
+    });
+    return rows.map((t) => ({ day: businessNow(t.date).date, type: t.type, amount: t.amount }));
 }
 
-/** Get the last N weeks of bank balance history */
-export async function getWeeklyBankHistory(weeks = 12) {
-    if (!await isAdminUser()) return [];
+export interface BalanceCheckRow extends CheckWithGap {
+    id: string;
+    notes: string | null;
+}
+
+/** The latest checks, newest first, each with the net since the check before it and the gap. */
+export async function getBalanceCheckHistory(limit = 14): Promise<BalanceCheckRow[]> {
+    if (!(await isAdminUser())) return [];
     try {
-        return await (db as any).weeklyBankBalance.findMany({
-            orderBy: { weekStart: "desc" },
-            take: weeks,
-        });
+        // One extra, so the oldest shown check still has a previous check to compare with
+        const rows = await db.weeklyBankBalance.findMany({ orderBy: { weekStart: "desc" }, take: limit + 1 });
+        if (rows.length === 0) return [];
+        const checks = rows.map((r) => ({ id: r.id, notes: r.notes, day: dateToDay(r.weekStart), bankBalance: r.bankBalance, cashBalance: r.cashBalance }));
+        const transactions = await transactionsSince(checks[checks.length - 1].day);
+        const extra = new Map(checks.map((c) => [c.day, { id: c.id, notes: c.notes }]));
+        return withGaps(checks, transactions)
+            .slice(0, limit)
+            .map((c) => ({ ...c, ...extra.get(c.day)! }));
     } catch (e) {
+        console.error("Failed to load balance checks:", e);
         return [];
     }
 }
 
-/** Save this week's bank balance + compute recorded net for the week */
-export async function saveWeeklyBankBalance(bankBalance: number, cashBalance: number, notes?: string) {
-    if (!await isAdminUser()) return { success: false, error: "Unauthorized" };
+/** Saves today's bank + cash balances (replaces today's entry if there is one). */
+export async function saveDailyBalanceCheck(bankBalance: number, cashBalance: number, notes?: string) {
+    if (!(await isAdminUser())) return { success: false as const, error: "Unauthorized" };
+    if (!Number.isFinite(bankBalance) || !Number.isFinite(cashBalance) || bankBalance < 0 || cashBalance < 0) {
+        return { success: false as const, error: "Enter valid balances." };
+    }
 
-    const monday = getMondayOf(new Date());
-    const sunday = new Date(monday);
-    sunday.setUTCDate(sunday.getUTCDate() + 6);
-    sunday.setUTCHours(23, 59, 59, 999);
-
+    const today = businessNow().date;
     try {
-        // Compute recorded net (income - expenses) for this week
-        const weekTransactions = await (db as any).transaction.findMany({
-            where: { date: { gte: monday, lte: sunday } },
-        });
+        const previous = await db.weeklyBankBalance.findFirst({ where: { weekStart: { lt: dayToDate(today) } }, orderBy: { weekStart: "desc" } });
+        const previousDay = previous ? dateToDay(previous.weekStart) : null;
+        const recordedNet = netBetween(await transactionsSince(previousDay ?? today), previousDay, today);
 
-        const income = weekTransactions
-            .filter((t: any) => t.type === "INCOME")
-            .reduce((s: number, t: any) => s + t.amount, 0);
-
-        const expenses = weekTransactions
-            .filter((t: any) => t.type === "EXPENSE")
-            .reduce((s: number, t: any) => s + t.amount, 0);
-
-        const recordedNet = income - expenses;
-
-        await (db as any).weeklyBankBalance.upsert({
-            where: { weekStart: monday },
-            update: { bankBalance, cashBalance, recordedNet, notes },
-            create: { weekStart: monday, bankBalance, cashBalance, recordedNet, notes },
+        await db.weeklyBankBalance.upsert({
+            where: { weekStart: dayToDate(today) },
+            update: { bankBalance, cashBalance, recordedNet, notes: notes || null },
+            create: { weekStart: dayToDate(today), bankBalance, cashBalance, recordedNet, notes: notes || null },
         });
 
         revalidatePath("/transactions");
-        return { success: true, recordedNet };
-    } catch (e: any) {
-        console.error("Failed to save weekly bank balance:", e);
-        return { success: false, error: e?.message || "Failed to save." };
+        return { success: true as const, recordedNet };
+    } catch (e) {
+        console.error("Failed to save daily balance check:", e);
+        return { success: false as const, error: "Failed to save." };
     }
 }

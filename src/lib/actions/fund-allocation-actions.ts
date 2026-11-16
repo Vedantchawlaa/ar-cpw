@@ -27,7 +27,7 @@ async function isAdminUser() {
 async function loadBuckets(): Promise<FundBucketConfig[]> {
     let rows = await db.fundBucket.findMany({ orderBy: { position: "asc" } });
     if (rows.length === 0) {
-        // First use: seed the default 55/12/10/10/7/5/1 split. Fixed ids so two
+        // First use: seed the default 55/12/8/8/11/5/1 split. Fixed ids so two
         // simultaneous first loads cannot seed it twice.
         await db.fundBucket.createMany({
             data: DEFAULT_FUND_BUCKETS.map((b, position) => ({ ...b, id: `default-${position}`, position })),
@@ -85,7 +85,7 @@ export async function getBucketTransactions(bucketId: string, month: number, yea
         if (!bucket) return { ok: false, error: "Bucket not found." };
         const start = new Date(year, month, 1);
         const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
-        const spent = bucket.kind === "SPEND" && bucket.categories.length > 0
+        const spent = bucket.categories.length > 0
             ? await db.transaction.findMany({
                 where: { type: "EXPENSE", category: { in: bucket.categories }, date: { gte: start, lte: end } },
                 orderBy: { date: "desc" },
@@ -116,7 +116,7 @@ export async function saveFundBuckets(input: unknown): Promise<{ ok: true } | { 
     if (!(await isAdminUser())) return { ok: false, error: "Only admins can change the fund split." };
     const parsed = z.array(BucketSchema).max(20).safeParse(input);
     if (!parsed.success) return { ok: false, error: "Some bucket details are invalid." };
-    const buckets = parsed.data.map((b) => ({ ...b, categories: b.kind === "SAVE" ? [] : [...new Set(b.categories)] }));
+    const buckets = parsed.data.map((b) => ({ ...b, categories: [...new Set(b.categories)] }));
     const problem = validateBuckets(buckets);
     if (problem) return { ok: false, error: problem };
 
