@@ -6,6 +6,7 @@
 // final sizes and the same cutting plan input:
 //   final track size = size - 3" per finial - 0.5" per endcap - 3" per motor
 //   curtain final height = height - 4"
+// A curtain with no style / mount saved counts as pinch pleat, ceiling.
 
 export interface WindowRow {
     itemId: string;
@@ -131,7 +132,7 @@ export function buildJobSummary(data: any): JobSummary {
                 const where = { floor: String(floor.name || "").trim(), room: String(room.name || "").trim(), window: String(item.name || "").trim() };
                 const isCurtain = item.type === "Curtain";
                 const hasTrack = isCurtain && item.trackRequired !== false;
-                const mount = item.mountType || (isCurtain ? "Wall" : "-");
+                const mount = item.mountType || (isCurtain ? "Ceiling" : "-"); // default: ceiling
 
                 windows.push({
                     itemId: item.id,
@@ -140,7 +141,7 @@ export function buildJobSummary(data: any): JobSummary {
                     width: inch(item.width),
                     height: inch(item.height),
                     quantity: String(item.quantity || "1"),
-                    curtainType: isCurtain ? item.curtainType || "Ripple Fold" : "-",
+                    curtainType: isCurtain ? item.curtainType || "Pinch Pleat" : "-",
                     mount: isCurtain ? mount : "-",
                     track: !isCurtain ? "-" : hasTrack ? inch(item.trackSize || item.width) : "No",
                     sheer: isCurtain && item.sheerRequired
@@ -191,7 +192,7 @@ export function buildJobSummary(data: any): JobSummary {
                     });
                 }
 
-                const curtainType = item.curtainType || "Ripple Fold";
+                const curtainType = item.curtainType || "Pinch Pleat"; // default: pinch pleat
                 const mainQty = num(item.quantity || "1");
                 curtains.push({
                     itemId: item.id, ...where, layer: "Main", quantity: mainQty, height: num(item.height), finalHeight: round2(num(item.height) - 4),

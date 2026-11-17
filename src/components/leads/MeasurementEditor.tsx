@@ -315,6 +315,12 @@ export function MeasurementEditor({
         const height = parseFloat(newItem.height) || 0;
         const panelCoverage = parseFloat(panelWidth) || 18;
 
+        // A window switched to curtain starts as the default: pinch pleat, ceiling
+        if (field === 'type' && value === "Curtain") {
+            newItem.curtainType = newItem.curtainType || "Pinch Pleat";
+            newItem.mountType = newItem.mountType || "Ceiling";
+        }
+
         if (field === 'trackRequired' && value === false) {
             newItem.trackProduct = undefined;
             newItem.trackSize = undefined;
@@ -455,7 +461,9 @@ export function MeasurementEditor({
                                     fabricRequired: "0",
                                     images: [],
                                     trackRequired: true,
-                                    sheerRequired: false
+                                    sheerRequired: false,
+                                    curtainType: "Pinch Pleat",
+                                    mountType: "Ceiling"
                                 }]
                             };
                         }
@@ -955,7 +963,7 @@ export function MeasurementEditor({
                                                         <label className="flex items-center gap-2 cursor-pointer">
                                                             <input
                                                                 type="radio"
-                                                                checked={item.mountType !== "Ceiling"}
+                                                                checked={item.mountType === "Wall"}
                                                                 onChange={() => updateItem(floor.id, room.id, item.id, 'mountType', "Wall")}
                                                                 className="text-blue-600 focus:ring-blue-500 w-4 h-4"
                                                             />
@@ -964,7 +972,7 @@ export function MeasurementEditor({
                                                         <label className="flex items-center gap-2 cursor-pointer">
                                                             <input
                                                                 type="radio"
-                                                                checked={item.mountType === "Ceiling"}
+                                                                checked={item.mountType !== "Wall"}
                                                                 onChange={() => updateItem(floor.id, room.id, item.id, 'mountType', "Ceiling")}
                                                                 className="text-blue-600 focus:ring-blue-500 w-4 h-4"
                                                             />
@@ -975,7 +983,7 @@ export function MeasurementEditor({
                                                         <label className="flex items-center gap-2 cursor-pointer">
                                                             <input
                                                                 type="radio"
-                                                                checked={item.curtainType !== "Pinch Pleat"}
+                                                                checked={item.curtainType === "Ripple Fold"}
                                                                 onChange={() => updateItem(floor.id, room.id, item.id, 'curtainType', "Ripple Fold")}
                                                                 className="text-blue-600 focus:ring-blue-500 w-4 h-4"
                                                             />
@@ -984,7 +992,7 @@ export function MeasurementEditor({
                                                         <label className="flex items-center gap-2 cursor-pointer">
                                                             <input
                                                                 type="radio"
-                                                                checked={item.curtainType === "Pinch Pleat"}
+                                                                checked={item.curtainType !== "Ripple Fold"}
                                                                 onChange={() => updateItem(floor.id, room.id, item.id, 'curtainType', "Pinch Pleat")}
                                                                 className="text-blue-600 focus:ring-blue-500 w-4 h-4"
                                                             />

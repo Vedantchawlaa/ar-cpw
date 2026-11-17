@@ -38,7 +38,7 @@ test("tracks: final cut size after finials, endcaps and motors", () => {
     assert.equal(sheer.finalSize, 104); // 108 - 2 endcaps x 0.5 - 1 motor x 3
     assert.equal(sheer.productId, "t1"); // sheer falls back to the main track product
     assert.equal(w2.size, 60); // no track size: uses the width
-    assert.equal(w2.mount, "Wall");
+    assert.equal(w2.mount, "Ceiling"); // nothing saved: default is ceiling
 });
 
 test("cut pieces use the same labels as the Sizes to Share tab", () => {
@@ -62,11 +62,11 @@ test("curtains, blinds and window rows", () => {
 
 test("accessories", () => {
     const a = buildJobSummary(data).accessories;
-    assert.equal(a.rippleCurtains, 5); // w1 2 + 2 sheer, w3 1
-    assert.equal(a.pinchCurtains, 1);
-    assert.equal(a.rings, 5 * 11 + 7);
-    assert.equal(a.ceilingBrackets, bracketsFor(110) + bracketsFor(108));
-    assert.equal(a.wallBrackets, bracketsFor(60));
+    assert.equal(a.rippleCurtains, 4); // w1 2 + 2 sheer
+    assert.equal(a.pinchCurtains, 2); // w2 + w3 (no style saved: default is pinch pleat)
+    assert.equal(a.rings, 4 * 11 + 2 * 7);
+    assert.equal(a.ceilingBrackets, bracketsFor(110) + bracketsFor(108) + bracketsFor(60));
+    assert.equal(a.wallBrackets, 0);
     assert.equal(a.finials, 2);
     assert.equal(a.endcaps, 2);
     assert.equal(a.motors, 1);
@@ -97,4 +97,12 @@ test("each curtain knows the cut size of its track", () => {
     assert.equal(by["Window 3 Main"].trackSize, null); // no track
     assert.equal(by["Window 1 Main"].mount, "Ceiling");
     assert.equal(by["Window 1 Main"].itemId, "w1");
+});
+
+test("a curtain with no style or mount saved is pinch pleat on the ceiling; saved values win", () => {
+    const s = buildJobSummary({ floors: [{ name: "G", rooms: [{ name: "R", items: [
+        { id: "a", name: "A", type: "Curtain", width: "50", height: "90" },
+        { id: "b", name: "B", type: "Curtain", width: "50", height: "90", curtainType: "Ripple Fold", mountType: "Wall" },
+    ] }] }] });
+    assert.deepEqual(s.windows.map((w) => [w.curtainType, w.mount]), [["Pinch Pleat", "Ceiling"], ["Ripple Fold", "Wall"]]);
 });

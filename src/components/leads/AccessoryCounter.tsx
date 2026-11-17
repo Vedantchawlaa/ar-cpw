@@ -69,7 +69,7 @@ export function AccessoryCounter({ initialData, measurementId, customerName }: {
 
                 if (item.type === "Curtain") {
                     const qty = parseInt(item.quantity || "1", 10);
-                    const isPinch = item.curtainType === "Pinch Pleat";
+                    const isPinch = item.curtainType !== "Ripple Fold"; // default is pinch pleat
                     
                     if (isPinch) autoPinchCount += qty;
                     else autoRippleCount += qty;
@@ -87,14 +87,14 @@ export function AccessoryCounter({ initialData, measurementId, customerName }: {
                     // Tally tracks for brackets and schedule
                     if (item.trackRequired !== false) {
                         const size = parseFloat(item.trackSize || item.width || "0");
-                        if (item.mountType === "Ceiling") ceilingTracksInches.push(size);
+                        if (item.mountType !== "Wall") ceilingTracksInches.push(size); // default is ceiling
                         else wallTracksInches.push(size);
                         
                         addTrackToSchedule(item.productId, size, isMotorized);
 
                         if (item.sheerRequired) {
                             const sheerSize = parseFloat(item.sheerTrackSize || item.sheerWidth || item.width || "0");
-                            if (item.mountType === "Ceiling") ceilingTracksInches.push(sheerSize);
+                            if (item.mountType !== "Wall") ceilingTracksInches.push(sheerSize);
                             else wallTracksInches.push(sheerSize);
                             
                             addTrackToSchedule(item.sheerProductId, sheerSize, isMotorized);

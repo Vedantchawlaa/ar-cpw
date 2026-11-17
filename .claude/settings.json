@@ -18,7 +18,11 @@
       "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")",
       "Bash(/usr/bin/python3 -c \"import Quartz; print\\('quartz ok'\\)\")",
       "Bash(node --experimental-strip-types --test src/lib/daily-balance.test.mjs)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(sed -i '' 's#<LeadForm initialData={lead} onSuccess={\\(\\) => { }} />#<LeadForm initialData={lead} />#' \"src/app/\\(protected\\)/leads/[id]/page.tsx\" && grep -n \"<LeadForm\" \"src/app/\\(protected\\)/leads/[id]/page.tsx\" && npx tsc --noEmit -p . 2>&1 | head -3)"
+    ],
+    "additionalDirectories": [
+      "/Users/tushr/ar-cpw/src/app/(protected)/leads/[id]"
     ]
   }
 }

@@ -60,7 +60,7 @@ export default async function LeadDetailPage({ params, searchParams }: PageProps
                 <TabsContent value="details" className="space-y-4">
                     <div className="max-w-2xl">
                         <div className="rounded-md border p-4 bg-white">
-                            <LeadForm initialData={lead} onSuccess={() => { }} />
+                            <LeadForm initialData={lead} />
                         </div>
                     </div>
                 </TabsContent>
