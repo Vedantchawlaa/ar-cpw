@@ -391,3 +391,19 @@ model FundTransfer {
   @@unique([bucketId, month, year])
   @@schema("public")
 }
+
+// Work done by a vendor (one line of their bill): nos x type at a price.
+model VendorWork {
+  id        String   @id @default(uuid())
+  vendor    String
+  nos       Float
+  type      String
+  date      DateTime // business day at 00:00 UTC
+  price     Float
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendor])
+  @@schema("public")
+}

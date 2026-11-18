@@ -1,9 +1,26 @@
 import { getAllMeasurements } from "@/lib/actions/measurement-actions";
 import { VendorList } from "@/components/vendors/VendorList";
+import { VendorLedger } from "@/components/vendors/VendorLedger";
+import { VendorsTabs } from "@/components/vendors/VendorsTabs";
+import { getVendorLedger } from "@/lib/actions/vendor-ledger-actions";
+import { businessNow } from "@/lib/staff-attendance";
 
 export const dynamic = 'force-dynamic';
 
-export default async function VendorsPage() {
+export default async function VendorsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+    const { tab } = await searchParams;
+    if (tab === "ledger") {
+        const ledger = await getVendorLedger();
+        return (
+            <div className="p-6 max-w-5xl mx-auto space-y-6">
+                <Header active="ledger" />
+                {ledger.ok
+                    ? <VendorLedger data={ledger.data} today={businessNow().date} />
+                    : <p className="text-sm text-red-600 p-6 border rounded-lg bg-red-50">{ledger.error}</p>}
+            </div>
+        );
+    }
+
     const measurements = await getAllMeasurements();
     
     // @ts-ignore
@@ -55,12 +72,23 @@ export default async function VendorsPage() {
 
     return (
         <div className="p-6 max-w-5xl mx-auto space-y-6">
+            <Header active="orders" />
+
+            <VendorList vendorOrders={vendorOrders} />
+        </div>
+    );
+}
+
+function Header({ active }: { active: "orders" | "ledger" }) {
+    return (
+        <div className="space-y-4">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900">Vendors & Orders</h1>
-                <p className="text-slate-500 mt-1">Track and manage production orders assigned to specific vendors.</p>
+                <p className="text-slate-500 mt-1">
+                    {active === "ledger" ? "Work done by each vendor, payments made and balance due." : "Track and manage production orders assigned to specific vendors."}
+                </p>
             </div>
-            
-            <VendorList vendorOrders={vendorOrders} />
+            <VendorsTabs active={active} />
         </div>
     );
 }
