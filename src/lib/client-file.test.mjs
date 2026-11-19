@@ -50,7 +50,7 @@ test("cut pieces use the same labels as the Sizes to Share tab", () => {
 test("curtains, blinds and window rows", () => {
     const s = buildJobSummary(data);
     assert.equal(s.curtains.length, 4); // w1 main + sheer, w2, w3
-    assert.equal(s.curtains[0].finalHeight, 93); // 96" - 3"
+    assert.equal(s.curtains[0].finalHeight, 94); // 96" - 2"
     assert.equal(s.curtains[0].customFabric, "Velvet Blue");
     assert.deepEqual(s.blinds.map((b) => [b.vendor, b.shade]), [["BlindCo", "Grey 04"]]);
     assert.equal(s.windows.length, 4);

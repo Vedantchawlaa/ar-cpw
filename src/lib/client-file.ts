@@ -5,11 +5,11 @@
 // The track rules mirror the "Sizes to Share" tab, so the file prints the same
 // final sizes and the same cutting plan input:
 //   final track size = size - 3" per finial - 0.5" per endcap - 3" per motor
-//   curtain final height = height - CURTAIN_HEIGHT_DEDUCTION (3")
+//   curtain final height = height - CURTAIN_HEIGHT_DEDUCTION (2")
 // A curtain with no style / mount saved counts as pinch pleat, ceiling.
 
 /** Inches taken off the measured height to get a curtain's final (stitching) height. */
-export const CURTAIN_HEIGHT_DEDUCTION = 3;
+export const CURTAIN_HEIGHT_DEDUCTION = 2;
 
 export interface WindowRow {
     itemId: string;
