@@ -23,9 +23,29 @@ export async function getMonthlyBalance(month: number, year: number) {
 
     try {
         // Try to get the current month's record
-        const balance = await (db as any).monthlyBalance.findUnique({
+        let balance = await (db as any).monthlyBalance.findUnique({
             where: { month_year: { month, year } },
         });
+
+        // Actual Cash in Hand follows the month's latest daily balance check (bank + cash)
+        // when that check was saved after the month's record was last changed.
+        const latestCheck = await db.weeklyBankBalance.findFirst({
+            where: { weekStart: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) } },
+            orderBy: { weekStart: "desc" },
+        });
+        if (latestCheck) {
+            const total = Math.round((latestCheck.bankBalance + latestCheck.cashBalance) * 100) / 100;
+            if (!balance || (balance.endingBalance !== total && latestCheck.updatedAt > balance.updatedAt)) {
+                const prev = balance ? null : await (db as any).monthlyBalance.findUnique({
+                    where: { month_year: { month: month === 0 ? 11 : month - 1, year: month === 0 ? year - 1 : year } },
+                });
+                balance = await (db as any).monthlyBalance.upsert({
+                    where: { month_year: { month, year } },
+                    update: { endingBalance: total },
+                    create: { month, year, startingBalance: prev?.endingBalance ?? 0, endingBalance: total },
+                });
+            }
+        }
 
         // If record exists and has a manually set starting balance, return as-is
         if (balance) return balance;

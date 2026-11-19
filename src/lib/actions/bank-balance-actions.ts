@@ -58,6 +58,23 @@ export async function getBalanceCheckHistory(limit = 14): Promise<BalanceCheckRo
     }
 }
 
+/**
+ * Keeps Cash Reconciliation in step: the month's "Actual Cash in Hand" is the latest
+ * daily check's bank + cash. A month with no record yet opens with last month's actual.
+ */
+async function syncMonthEnding(day: string, total: number) {
+    const year = Number(day.slice(0, 4));
+    const month = Number(day.slice(5, 7)) - 1; // 0-11, as MonthlyBalance stores it
+    const prev = await db.monthlyBalance.findUnique({
+        where: { month_year: { month: month === 0 ? 11 : month - 1, year: month === 0 ? year - 1 : year } },
+    });
+    await db.monthlyBalance.upsert({
+        where: { month_year: { month, year } },
+        update: { endingBalance: total },
+        create: { month, year, startingBalance: prev?.endingBalance ?? 0, endingBalance: total },
+    });
+}
+
 /** Saves today's bank + cash balances (replaces today's entry if there is one). */
 export async function saveDailyBalanceCheck(bankBalance: number, cashBalance: number, notes?: string) {
     if (!(await isAdminUser())) return { success: false as const, error: "Unauthorized" };
@@ -76,8 +93,10 @@ export async function saveDailyBalanceCheck(bankBalance: number, cashBalance: nu
             update: { bankBalance, cashBalance, recordedNet, notes: notes || null },
             create: { weekStart: dayToDate(today), bankBalance, cashBalance, recordedNet, notes: notes || null },
         });
+        await syncMonthEnding(today, Math.round((bankBalance + cashBalance) * 100) / 100);
 
         revalidatePath("/transactions");
+        revalidatePath("/dashboard");
         return { success: true as const, recordedNet };
     } catch (e) {
         console.error("Failed to save daily balance check:", e);

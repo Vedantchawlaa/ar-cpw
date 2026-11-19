@@ -83,6 +83,9 @@ export default async function TransactionsPage(props: {
     // Daily bank + cash check
     const balanceChecks = await getBalanceCheckHistory(14);
     const todayCheck = balanceChecks[0]?.day === businessNow().date ? balanceChecks[0] : null;
+    // The daily check that set this month's Actual Cash in Hand (its bank + cash), if any
+    const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
+    const syncedCheck = balanceChecks.find((c) => c.day.startsWith(monthKey) && Math.abs(c.total - (monthlyBalance?.endingBalance ?? NaN)) < 0.01) ?? null;
 
     // Aggregate expenses for the pie chart using all period transactions
     const expenseDataMap: Record<string, number> = {};
@@ -177,6 +180,9 @@ export default async function TransactionsPage(props: {
                         <TransactionForm />
                         {range === "month" && (
                             <BalanceWidget
+                                // remount when the saved balances change (e.g. after a daily check)
+                                key={`${selectedMonth}-${selectedYear}-${monthlyBalance?.startingBalance}-${monthlyBalance?.endingBalance}`}
+                                syncedFrom={syncedCheck?.day ?? null}
                                 month={selectedMonth}
                                 year={selectedYear}
                                 income={stats.income}

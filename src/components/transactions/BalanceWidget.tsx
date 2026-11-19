@@ -17,6 +17,7 @@ interface BalanceWidgetProps {
     initialStarting: number;
     initialEnding: number | null;
     carriedForward?: boolean;
+    syncedFrom?: string | null; // day of the daily balance check it came from
 }
 
 export function BalanceWidget({
@@ -27,6 +28,7 @@ export function BalanceWidget({
     initialStarting,
     initialEnding,
     carriedForward = false,
+    syncedFrom = null,
 }: BalanceWidgetProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [startingBalance, setStartingBalance] = useState(initialStarting);
@@ -183,7 +185,14 @@ export function BalanceWidget({
 
                     {/* Ending Balance */}
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Actual Cash in Hand</span>
+                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wide flex flex-col gap-0.5">
+                            Actual Cash in Hand
+                            {syncedFrom && !isEditing && endingSet && (
+                                <span className="text-[10px] font-semibold normal-case tracking-normal text-green-700 bg-green-50 px-1.5 py-0.5 rounded w-fit">
+                                    ⟳ from balance check, {new Date(`${syncedFrom}T00:00:00Z`).toLocaleDateString("en-IN", { timeZone: "UTC", day: "numeric", month: "short" })} (bank + cash)
+                                </span>
+                            )}
+                        </span>
                         {isEditing ? (
                             <Input
                                 type="number"
@@ -240,7 +249,7 @@ export function BalanceWidget({
                 {/* Hint when no ending balance */}
                 {!endingSet && !isEditing && (
                     <p className="text-[10px] text-muted-foreground text-center pt-1">
-                        Set "Actual Cash in Hand" at month end to see missing amount
+                        Fills in from the daily balance check (bank + cash), or set it by hand
                     </p>
                 )}
             </CardContent>
