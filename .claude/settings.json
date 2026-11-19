@@ -34,7 +34,8 @@
       "Bash(sed -i '' 's/export const CURTAIN_HEIGHT_DEDUCTION = 3;/export const CURTAIN_HEIGHT_DEDUCTION = 2;/; s|CURTAIN_HEIGHT_DEDUCTION \\(3\"\\)|CURTAIN_HEIGHT_DEDUCTION \\(2\"\\)|' src/lib/client-file.ts)",
       "Bash(sed -i '' 's|finalHeight, 93\\); // 96\" - 3\"|finalHeight, 94\\); // 96\" - 2\"|' src/lib/client-file.test.mjs)",
       "Bash(git -c user.name=vedant501 -c user.email=heyvedant501@gmail.com commit -q -m 'fix: curtain final height is measured height minus 2 inches *)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -m 90 \"http://localhost:3000/transactions\")"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -m 90 \"http://localhost:3000/transactions\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -m 90 \"http://localhost:3000/vendors?tab=directory\")"
     ],
     "additionalDirectories": [
       "/Users/tushr/ar-cpw/src/app/(protected)/leads/[id]"

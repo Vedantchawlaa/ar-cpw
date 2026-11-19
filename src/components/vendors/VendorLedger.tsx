@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Pencil, Trash2, Plus, X, Check, Wallet, Printer, ReceiptText, Paperclip, Download, CopyX, ChevronRight } from "lucide-react";
 import { BillDialog } from "@/components/vendors/BillDialog";
 import { formatCurrency } from "@/lib/utils";
-import { KIND_INFO, VENDOR_KINDS, duplicateBills, lastGst, lastPrice, ledgerEntries, lineGst, lineTotal, sameVendor, summarizeVendor, vendorNames, type BillInfo, type WorkRow } from "@/lib/vendor-ledger";
+import { KIND_INFO, VENDOR_KINDS, duplicateBills, lastGst, lastPrice, ledgerEntries, lineGst, lineTotal, looseLineTotal, sameVendor, summarizeVendor, vendorNames, type BillInfo, type WorkRow } from "@/lib/vendor-ledger";
 import { deleteVendorBill, deleteVendorWork, saveVendorWork, type VendorLedgerData } from "@/lib/actions/vendor-ledger-actions";
 
 const rs = (n: number) => `₹${formatCurrency(n)}`;
@@ -97,7 +97,7 @@ export function VendorLedger({ data, today, initialVendor }: { data: VendorLedge
                                             <td className="text-right px-3 py-2 text-slate-600">
                                                 {r.gstPercent ? <>{formatCurrency(lineGst(r))} <span className="text-[11px] text-slate-400">({r.gstPercent}%)</span></> : <span className="text-slate-300">–</span>}
                                             </td>
-                                            <td className="text-right px-3 py-2 font-semibold">{formatCurrency(lineTotal(r))}</td>
+                                            <td className="text-right px-3 py-2 font-semibold">{formatCurrency(inBill ? lineTotal(r) : looseLineTotal(r))}</td>
                                             <td className="px-2 py-2 no-print">
                                                 {!inBill && <div className="flex justify-end gap-1">
                                                     <button title="Edit" className="p-1 text-slate-400 hover:text-blue-600" onClick={() => { setEditingId(r.id); setEdit({ nos: String(r.nos), type: r.type, date: r.date, price: String(r.price), notes: r.notes ?? "", gstOn: !!r.gstPercent, gst: r.gstPercent ? String(r.gstPercent) : "", ref: r.refNo ?? "" }); }}><Pencil className="h-3.5 w-3.5" /></button>

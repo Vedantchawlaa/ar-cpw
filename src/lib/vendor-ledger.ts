@@ -102,7 +102,7 @@ export function ledgerEntries(rows: WorkRow[], bills: BillInfo[]): LedgerEntry[]
         if (!lines) continue; // bill of another vendor, or with no lines
         const subtotal = round2(lines.reduce((s, r) => s + lineBase(r), 0));
         const gst = round2(lines.reduce((s, r) => s + lineGst(r), 0));
-        const roundOff = b.roundOff || 0;
+        const roundOff = billRoundOff(round2(subtotal + gst), b.roundOff);
         entries.push({ date: b.date, entry: { kind: "bill", bill: b, lines, subtotal, gst, roundOff, total: round2(subtotal + gst + roundOff) } });
     }
     return entries.sort((a, b) => a.date.localeCompare(b.date)).map((e) => e.entry);
@@ -127,12 +127,19 @@ export function paymentIsFor(description: string | null | undefined, vendor: str
     return new RegExp(`(^|[^a-z0-9])${escapeRe(name)}($|[^a-z0-9])`, "i").test(description);
 }
 
+/** Round off to the nearest rupee: what makes `total` a whole number. */
+export const autoRoundOff = (total: number) => round2(Math.round(total) - total);
+/** A bill's round off: the one saved with it, else to the nearest rupee (bills saved before round off existed). */
+export const billRoundOff = (total: number, saved: number | null | undefined) => (saved ? saved : autoRoundOff(total));
+
 /** Before GST: nos x price. */
 export const lineBase = (r: Pick<WorkRow, "nos" | "price">) => round2(r.nos * r.price);
 /** GST on the line (0 when GST is off). */
 export const lineGst = (r: Pick<WorkRow, "nos" | "price" | "gstPercent">) => round2(lineBase(r) * (r.gstPercent || 0) / 100);
-/** What the line costs: base + GST. */
+/** What the line costs: base + GST (exact, before round off). */
 export const lineTotal = (r: Pick<WorkRow, "nos" | "price" | "gstPercent">) => round2(lineBase(r) + lineGst(r));
+/** A line entered on its own, as charged: base + GST rounded to the nearest rupee. */
+export const looseLineTotal = (r: Pick<WorkRow, "nos" | "price" | "gstPercent">) => Math.round(lineTotal(r));
 
 export interface VendorSummary {
     vendor: string;
@@ -167,8 +174,12 @@ export function summarizeVendor(vendor: string, work: WorkRow[], payouts: Paymen
 
     const subtotal = round2(rows.reduce((s, r) => s + lineBase(r), 0));
     const gst = round2(rows.reduce((s, r) => s + lineGst(r), 0));
-    const billIds = new Set(rows.map((r) => r.billId).filter(Boolean));
-    const roundOff = round2(bills.reduce((s, b) => s + (billIds.has(b.id) ? b.roundOff || 0 : 0), 0));
+    // Every entry is rounded to the rupee: each bill as a whole, each line entered on its own
+    let roundOff = 0;
+    for (const e of ledgerEntries(rows, bills)) {
+        roundOff += e.kind === "bill" ? e.roundOff : autoRoundOff(lineTotal(e.row));
+    }
+    roundOff = round2(roundOff);
     const workTotal = round2(subtotal + gst + roundOff);
     const paid = round2(payments.reduce((s, p) => s + p.amount, 0));
     return {

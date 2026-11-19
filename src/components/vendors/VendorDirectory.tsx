@@ -83,13 +83,33 @@ export function VendorDirectory({ data }: { data: VendorLedgerData }) {
             )}
             {!form && error && <p className="text-sm text-red-600">{error}</p>}
 
+            {(() => {
+                const all = sumDue(data.vendors.map((v) => due.get(v.name)?.due ?? 0));
+                return all.due > 0 || all.advance > 0 ? (
+                    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-lg border bg-white px-4 py-3 shadow-sm">
+                        <span className="text-sm font-semibold text-slate-600">Total balance due, all vendors</span>
+                        <span className="text-lg font-bold text-red-600">₹{formatCurrency(all.due)}</span>
+                        {all.advance > 0 && <span className="text-xs font-semibold text-green-600">Advance given ₹{formatCurrency(all.advance)}</span>}
+                    </div>
+                ) : null;
+            })()}
+
             {VENDOR_KINDS.map((kind) => {
                 const group = data.vendors.filter((v) => v.kind === kind);
+                const groupDue = sumDue(group.map((v) => due.get(v.name)?.due ?? 0));
                 return (
                     <Card key={kind} className="shadow-sm overflow-hidden">
                         <CardHeader className="pb-2 bg-slate-50 border-b flex flex-row items-center justify-between">
                             <CardTitle className="text-sm uppercase tracking-wider text-slate-600">{KIND_INFO[kind].label} <span className="text-slate-400">({group.length})</span></CardTitle>
-                            <button onClick={() => open(undefined, kind)} className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add</button>
+                            <div className="flex items-center gap-4">
+                                {(groupDue.due > 0 || groupDue.advance > 0) && (
+                                    <span className="text-right text-xs leading-tight">
+                                        <span className={`block font-bold ${groupDue.due > 0 ? "text-red-600" : "text-green-600"}`}>Balance due ₹{formatCurrency(groupDue.due)}</span>
+                                        {groupDue.advance > 0 && <span className="block text-[11px] font-medium text-green-600">Advance ₹{formatCurrency(groupDue.advance)}</span>}
+                                    </span>
+                                )}
+                                <button onClick={() => open(undefined, kind)} className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add</button>
+                            </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             {group.length === 0 ? (
@@ -124,4 +144,10 @@ export function VendorDirectory({ data }: { data: VendorLedgerData }) {
             })}
         </div>
     );
+}
+
+/** Dues of several vendors: what is owed, and advances kept apart (one vendor's advance doesn't cancel another's due). */
+function sumDue(dues: number[]) {
+    const r = (n: number) => Math.round(n * 100) / 100;
+    return { due: r(dues.filter((d) => d > 0).reduce((s, d) => s + d, 0)), advance: r(-dues.filter((d) => d < 0).reduce((s, d) => s + d, 0)) };
 }

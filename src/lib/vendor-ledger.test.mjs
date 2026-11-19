@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { summarizeVendor, paymentIsFor, lastPrice, vendorNames, mergeVendors, asKind, lineTotal, lastGst, ledgerEntries, duplicateBills } from "./vendor-ledger.ts";
+import { summarizeVendor, paymentIsFor, lastPrice, vendorNames, mergeVendors, asKind, lineTotal, lastGst, ledgerEntries, duplicateBills, looseLineTotal } from "./vendor-ledger.ts";
 
 // The vendor sheet: grand total 10555
 const sheet = [
@@ -69,8 +69,10 @@ test("GST is added per line and shown apart from the subtotal", () => {
     const s = summarizeVendor("Raj Fabrics", work, [{ id: "p", date: "2026-11-04", amount: 4000, description: "raj fabrics bill B-101" }]);
     assert.equal(s.subtotal, 4202);
     assert.equal(s.gst, 270.24);
-    assert.equal(s.workTotal, 4472.24);
-    assert.equal(s.due, 472.24);
+    assert.equal(s.roundOff, -0.24); // the 1,122.24 line is charged as 1,122
+    assert.equal(s.workTotal, 4472);
+    assert.equal(s.due, 472);
+    assert.equal(looseLineTotal(work[1]), 1122);
     assert.equal(lastGst(work, "raj fabrics"), null); // latest line has GST off
     assert.equal(lastGst(work.slice(0, 2), "Raj Fabrics"), 12);
 });
@@ -101,7 +103,9 @@ test("bill round off counts in the bill and the grand total", () => {
     assert.equal(s.workTotal, 10517);
     const [e] = ledgerEntries(s.rows, bills);
     assert.equal(e.total, 10517);
-    assert.equal(summarizeVendor("Kapoor Fabs", work, []).workTotal, 10516.8); // without bills: no round off
+    assert.equal(summarizeVendor("Kapoor Fabs", work, []).workTotal, 10517); // without the bill: each line rounded on its own
+    // a bill saved before round off existed is rounded to the rupee
+    assert.equal(summarizeVendor("Kapoor Fabs", work, [], [{ ...bills[0], roundOff: null }]).workTotal, 10517);
 });
 
 test("duplicate bills: same file or same bill no. for the same vendor", () => {
@@ -116,4 +120,12 @@ test("duplicate bills: same file or same bill no. for the same vendor", () => {
     assert.deepEqual([...d.keys()].sort(), ["1", "2", "3"]);
     assert.equal(d.get("3"), "Same file uploaded twice");
     assert.equal(d.get("2"), "Same bill no. entered twice");
+});
+
+test("loose lines with GST round to the rupee (A1 style)", () => {
+    const work = [22784, 2425.5, 15329, 6400, 3916.8].map((price, i) => ({ id: String(i), vendor: "A1", nos: 1, type: "mosha", date: "2026-11-0" + (i + 1), price, gstPercent: 5 }));
+    const s = summarizeVendor("A1", work, [{ id: "p", date: "2026-11-09", amount: 20000, description: "A1 payment" }], []);
+    assert.equal(s.workTotal, 53398);
+    assert.equal(s.due, 33398);
+    assert.equal(Number.isInteger(s.workTotal), true);
 });
