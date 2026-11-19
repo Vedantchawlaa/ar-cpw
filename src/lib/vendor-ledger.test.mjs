@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { summarizeVendor, paymentIsFor, lastPrice, vendorNames } from "./vendor-ledger.ts";
+import { summarizeVendor, paymentIsFor, lastPrice, vendorNames, mergeVendors, asKind, lineTotal, lastGst, ledgerEntries, duplicateBills } from "./vendor-ledger.ts";
 
 // The vendor sheet: grand total 10555
 const sheet = [
@@ -44,4 +44,76 @@ test("price pre-fill uses the latest price for that vendor and type", () => {
 
 test("vendor names are merged without duplicates", () => {
     assert.deepEqual(vendorNames(["Parveen", " raj "], ["parveen", "Amit", ""]), ["Amit", "Parveen", "raj"]);
+});
+
+test("directory entries win over names only seen in ledger rows", () => {
+    const list = mergeVendors(
+        [{ id: "1", name: "Parveen Kamboj", kind: "STITCHING" }, { id: "2", name: "Shades Co", kind: "BLINDS" }],
+        [{ name: "parveen kamboj", kind: "OTHER" }, { name: "Raj Fabrics", kind: "FABRIC" }, { name: " ", kind: "OTHER" }],
+    );
+    assert.deepEqual(list.map((v) => [v.name, v.kind, v.id]), [
+        ["Parveen Kamboj", "STITCHING", "1"], ["Raj Fabrics", "FABRIC", null], ["Shades Co", "BLINDS", "2"],
+    ]);
+    assert.equal(asKind("FABRIC"), "FABRIC");
+    assert.equal(asKind("nope"), "OTHER");
+});
+
+test("GST is added per line and shown apart from the subtotal", () => {
+    const work = [
+        { id: "a", vendor: "Raj Fabrics", nos: 10, type: "Velvet", date: "2026-11-01", price: 300, gstPercent: 5, refNo: "B-101" },
+        { id: "b", vendor: "Raj Fabrics", nos: 4, type: "Sheer", date: "2026-11-02", price: 250.5, gstPercent: 12 },
+        { id: "c", vendor: "Raj Fabrics", nos: 2, type: "Lining", date: "2026-11-03", price: 100 }, // no GST
+    ];
+    assert.equal(lineTotal(work[0]), 3150);
+    assert.equal(lineTotal(work[1]), 1122.24);
+    const s = summarizeVendor("Raj Fabrics", work, [{ id: "p", date: "2026-11-04", amount: 4000, description: "raj fabrics bill B-101" }]);
+    assert.equal(s.subtotal, 4202);
+    assert.equal(s.gst, 270.24);
+    assert.equal(s.workTotal, 4472.24);
+    assert.equal(s.due, 472.24);
+    assert.equal(lastGst(work, "raj fabrics"), null); // latest line has GST off
+    assert.equal(lastGst(work.slice(0, 2), "Raj Fabrics"), 12);
+});
+
+test("lines of one bill are grouped under it, loose lines stay single, all in date order", () => {
+    const bill = { id: "B1", vendor: "Raj", refNo: "101", date: "2026-11-05", gstPercent: 5, notes: null, attachmentId: "a1", fileName: "bill.jpg" };
+    const rows = [
+        { id: "1", vendor: "Raj", nos: 10, type: "Velvet", date: "2026-11-05", price: 300, gstPercent: 5, billId: "B1" },
+        { id: "2", vendor: "Raj", nos: 1, type: "Hooks", date: "2026-11-01", price: 50 },
+        { id: "3", vendor: "Raj", nos: 2, type: "Lining", date: "2026-11-05", price: 100, gstPercent: 5, billId: "B1" },
+        { id: "4", vendor: "Raj", nos: 1, type: "Old", date: "2026-11-09", price: 10, billId: "gone" }, // bill deleted: shows as a loose line
+    ];
+    const e = ledgerEntries(rows, [bill]);
+    assert.deepEqual(e.map((x) => x.kind === "bill" ? `bill:${x.lines.length}` : `line:${x.row.id}`), ["line:2", "bill:2", "line:4"]);
+    assert.equal(e[1].subtotal, 3200);
+    assert.equal(e[1].gst, 160);
+    assert.equal(e[1].total, 3360);
+});
+
+test("bill round off counts in the bill and the grand total", () => {
+    const work = [
+        { id: "a", vendor: "Kapoor Fabs", nos: 4, type: "Zebra", date: "2026-11-16", price: 2429, gstPercent: 5, billId: "b1" },
+        { id: "b", vendor: "Kapoor Fabs", nos: 1, type: "Freight", date: "2026-11-16", price: 300, gstPercent: 5, billId: "b1" },
+    ];
+    const bills = [{ id: "b1", vendor: "Kapoor Fabs", refNo: "KF/14695", date: "2026-11-16", gstPercent: 5, roundOff: 0.2, notes: null, attachmentId: null, fileName: null }];
+    const s = summarizeVendor("Kapoor Fabs", work, [], bills);
+    assert.equal(s.roundOff, 0.2);
+    assert.equal(s.workTotal, 10517);
+    const [e] = ledgerEntries(s.rows, bills);
+    assert.equal(e.total, 10517);
+    assert.equal(summarizeVendor("Kapoor Fabs", work, []).workTotal, 10516.8); // without bills: no round off
+});
+
+test("duplicate bills: same file or same bill no. for the same vendor", () => {
+    const b = (id, vendor, refNo, fileHash = null) => ({ id, vendor, refNo, date: "2026-11-02", gstPercent: 5, notes: null, attachmentId: null, fileName: null, fileHash });
+    const d = duplicateBills([
+        b("1", "Kapoor Fabs", "KF/13728/26-27", "h1"),
+        b("2", "kapoor fabs", "kf/13728/26-27 ", "h2"), // same no., other case/space
+        b("3", "Raj Fabrics", "X-1", "h1"), // same file as 1
+        b("4", "Raj Fabrics", "KF/13728/26-27"), // same no. but another vendor: fine
+        b("5", "Raj Fabrics", null), b("6", "Raj Fabrics", ""), // no number: never flagged
+    ]);
+    assert.deepEqual([...d.keys()].sort(), ["1", "2", "3"]);
+    assert.equal(d.get("3"), "Same file uploaded twice");
+    assert.equal(d.get("2"), "Same bill no. entered twice");
 });

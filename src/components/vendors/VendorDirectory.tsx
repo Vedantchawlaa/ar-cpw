@@ -1,0 +1,127 @@
+"use client";
+
+import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Pencil, Trash2, Plus, Phone, MapPin, NotebookPen } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { KIND_INFO, VENDOR_KINDS, summarizeVendor, type VendorInfo, type VendorKind } from "@/lib/vendor-ledger";
+import { deleteVendor, saveVendor, type VendorLedgerData } from "@/lib/actions/vendor-ledger-actions";
+
+interface Form { name: string; kind: VendorKind; phone: string; address: string; notes: string }
+const empty = (kind: VendorKind = "FABRIC"): Form => ({ name: "", kind, phone: "", address: "", notes: "" });
+
+export function VendorDirectory({ data }: { data: VendorLedgerData }) {
+    const router = useRouter();
+    const [form, setForm] = useState<Form | null>(null);
+    const [editing, setEditing] = useState<VendorInfo | null>(null); // the vendor being edited; null = adding
+    const [error, setError] = useState<string | null>(null);
+    const [isPending, startTransition] = useTransition();
+
+    const due = useMemo(() => new Map(data.vendors.map((v) => [v.name, summarizeVendor(v.name, data.work, data.payouts, data.bills)])), [data]);
+
+    function open(v?: VendorInfo, kind?: VendorKind) {
+        setError(null);
+        setEditing(v ?? null);
+        setForm(v ? { name: v.name, kind: v.kind, phone: v.phone ?? "", address: v.address ?? "", notes: v.notes ?? "" } : empty(kind));
+    }
+
+    function save() {
+        if (!form) return;
+        setError(null);
+        startTransition(async () => {
+            const res = await saveVendor(form, editing?.id ?? undefined);
+            if (!res.ok) return setError(res.error);
+            setForm(null);
+            router.refresh();
+        });
+    }
+
+    function remove(v: VendorInfo) {
+        if (!v.id || !confirm(`Remove ${v.name} from the directory? Their ledger rows are kept.`)) return;
+        startTransition(async () => {
+            const res = await deleteVendor(v.id!);
+            if (!res.ok) return setError(res.error);
+            router.refresh();
+        });
+    }
+
+    return (
+        <div className="space-y-4">
+            {form ? (
+                <Card className="border-2 border-blue-300 bg-blue-50/40 shadow-sm">
+                    <CardHeader className="pb-2"><CardTitle className="text-base">{editing ? `Edit ${editing.name}` : "Add vendor / source"}</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                            {VENDOR_KINDS.map((k) => (
+                                <button key={k} onClick={() => setForm({ ...form, kind: k })}
+                                    className={`rounded-full px-3 py-1.5 text-sm font-medium border ${form.kind === k ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 hover:bg-slate-50"}`}>
+                                    {KIND_INFO[k].label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <Input autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name *" />
+                            <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone" inputMode="tel" />
+                            <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Address / market" />
+                            <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes (catalogues, brands, rates…)" />
+                        </div>
+                        {editing && editing.id === null && <p className="text-xs text-slate-500">This name is used in ledger rows but not saved in the directory yet; saving adds it.</p>}
+                        {error && <p className="text-sm text-red-600">{error}</p>}
+                        <div className="flex gap-2">
+                            <button onClick={() => setForm(null)} disabled={isPending} className="flex-1 sm:flex-none px-4 py-2 rounded-md border text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+                            <button onClick={save} disabled={isPending} className="flex-1 sm:flex-none px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60">{isPending ? "Saving..." : "Save"}</button>
+                        </div>
+                    </CardContent>
+                </Card>
+            ) : (
+                <button onClick={() => open()} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
+                    <Plus className="h-4 w-4" /> Add vendor / source
+                </button>
+            )}
+            {!form && error && <p className="text-sm text-red-600">{error}</p>}
+
+            {VENDOR_KINDS.map((kind) => {
+                const group = data.vendors.filter((v) => v.kind === kind);
+                return (
+                    <Card key={kind} className="shadow-sm overflow-hidden">
+                        <CardHeader className="pb-2 bg-slate-50 border-b flex flex-row items-center justify-between">
+                            <CardTitle className="text-sm uppercase tracking-wider text-slate-600">{KIND_INFO[kind].label} <span className="text-slate-400">({group.length})</span></CardTitle>
+                            <button onClick={() => open(undefined, kind)} className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"><Plus className="h-3 w-3" /> Add</button>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {group.length === 0 ? (
+                                <p className="text-xs text-slate-400 px-4 py-3">None yet.</p>
+                            ) : group.map((v) => {
+                                const s = due.get(v.name);
+                                return (
+                                    <div key={v.name} className="flex items-start justify-between gap-3 px-4 py-3 border-t first:border-t-0">
+                                        <div className="min-w-0 space-y-0.5">
+                                            <p className="font-semibold text-slate-800">{v.name}{v.id === null && <span className="ml-2 text-[10px] font-medium text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">not saved</span>}</p>
+                                            {v.phone && <a href={`tel:${v.phone}`} className="text-xs text-blue-600 flex items-center gap-1"><Phone className="h-3 w-3" />{v.phone}</a>}
+                                            {v.address && <p className="text-xs text-slate-500 flex items-center gap-1"><MapPin className="h-3 w-3" />{v.address}</p>}
+                                            {v.notes && <p className="text-xs text-slate-500">{v.notes}</p>}
+                                        </div>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            {s && (s.workTotal > 0 || s.paid > 0) && (
+                                                <div className="text-right text-xs">
+                                                    <p className="text-slate-500">Total ₹{formatCurrency(s.workTotal)}</p>
+                                                    <p className={`font-semibold ${s.due > 0 ? "text-red-600" : "text-green-600"}`}>{s.due < 0 ? "Advance" : "Due"} ₹{formatCurrency(Math.abs(s.due))}</p>
+                                                </div>
+                                            )}
+                                            <Link href={`/vendors?tab=ledger&vendor=${encodeURIComponent(v.name)}`} title="Open ledger" className="p-1.5 text-slate-400 hover:text-blue-600"><NotebookPen className="h-4 w-4" /></Link>
+                                            <button title={v.id ? "Edit" : "Save to directory"} onClick={() => open(v)} className="p-1.5 text-slate-400 hover:text-blue-600"><Pencil className="h-4 w-4" /></button>
+                                            {v.id && <button title="Remove" onClick={() => remove(v)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </CardContent>
+                    </Card>
+                );
+            })}
+        </div>
+    );
+}

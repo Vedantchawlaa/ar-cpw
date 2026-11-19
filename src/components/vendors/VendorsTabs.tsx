@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Store, NotebookPen } from "lucide-react";
+import { Store, NotebookPen, Contact } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
     { tab: "orders", label: "Orders", icon: Store },
+    { tab: "directory", label: "Directory", icon: Contact },
     { tab: "ledger", label: "Work Ledger", icon: NotebookPen },
 ] as const;
 

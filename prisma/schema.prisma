@@ -399,11 +399,49 @@ model VendorWork {
   nos       Float
   type      String
   date      DateTime // business day at 00:00 UTC
-  price     Float
+  price      Float
+  notes      String?
+  gstPercent Float? // null = no GST
+  refNo      String? // vendor's bill no.
+  billId     String? // set when the line belongs to a VendorBill (bill's date, GST and no. are copied onto it)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([vendor])
+  @@index([billId])
+  @@schema("public")
+}
+
+// Vendor directory: stitching vendors and fabric / blind / track sources. Ledger rows link by name.
+model Vendor {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  kind      String   @default("OTHER") // STITCHING | FABRIC | BLINDS | TRACKS | OTHER
+  phone     String?
+  address   String?
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@schema("public")
+}
+
+// One vendor bill: several VendorWork lines plus the scanned / PDF bill kept for reference.
+model VendorBill {
+  id           String   @id @default(uuid())
+  vendor       String
+  refNo        String?
+  date         DateTime // business day at 00:00 UTC
+  gstPercent   Float?
+  roundOff     Float? // added to the bill total, e.g. 0.20 or -0.30
+  notes        String?
+  attachmentId String? // Attachment holding the uploaded bill
+  fileName     String?
+  fileHash     String? // sha256 of the uploaded file, to spot the same bill uploaded twice
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   @@index([vendor])
+  @@index([fileHash])
   @@schema("public")
 }
