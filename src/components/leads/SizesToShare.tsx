@@ -13,6 +13,7 @@ import { DEFAULT_TRACK_CUTTING_SETTINGS, TrackCuttingSettings, planWithStock, ty
 import { applyTrackPlanToStock, planTracksWithStock } from "@/lib/actions/stock-actions";
 import type { AppliedTrackStock } from "@/lib/services/stock-service";
 import { drawTrackCuttingPlan } from "@/lib/track-cutting-pdf";
+import { CURTAIN_HEIGHT_DEDUCTION } from "@/lib/client-file";
 
 export function SizesToShare({ leadId, measurementId, initialData, customerName, title }: any) {
     const router = useRouter();
@@ -317,7 +318,7 @@ export function SizesToShare({ leadId, measurementId, initialData, customerName,
                                 const hNum = parseFloat(item.h || "0");
                                 return [
                                     fabricName,
-                                    `${item.qty} ${item.qty === "1" ? "curtain" : "curtains"} x ${(hNum - 4).toFixed(2)}"`
+                                    `${item.qty} ${item.qty === "1" ? "curtain" : "curtains"} x ${(hNum - CURTAIN_HEIGHT_DEDUCTION).toFixed(2)}"`
                                 ];
                             }),
                             theme: 'grid',
@@ -665,7 +666,7 @@ export function SizesToShare({ leadId, measurementId, initialData, customerName,
                                         <tbody>
                                             {items.map((item) => {
                                                 const hNum = parseFloat(item.h || "0");
-                                                const finalH = (hNum - 4).toFixed(2);
+                                                const finalH = (hNum - CURTAIN_HEIGHT_DEDUCTION).toFixed(2);
                                                 const specs = itemSpecs[item.id] || {};
 
                                                 return (

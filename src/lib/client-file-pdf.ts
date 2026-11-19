@@ -3,7 +3,7 @@
 // render: "Rs." instead of the rupee sign, "x" instead of the times sign.
 
 import type { ClientFileData } from "@/lib/actions/client-file-actions";
-import { buildJobSummary, trackTotalsByProduct, type JobSummary } from "@/lib/client-file";
+import { CURTAIN_HEIGHT_DEDUCTION, buildJobSummary, trackTotalsByProduct, type JobSummary } from "@/lib/client-file";
 import { drawTrackCuttingPlan } from "@/lib/track-cutting-pdf";
 import { formatFeetInches } from "@/lib/stock-units";
 
@@ -320,7 +320,7 @@ function curtainSection(job: JobSummary, file: ClientFileData, table: (o: any) =
         byFabric.set(fabric, [...(byFabric.get(fabric) || []), c]);
     }
     const total = job.curtains.reduce((s, c) => s + c.quantity, 0);
-    y = note(`Total: ${total} curtain panel(s). Final size = measured height - 4". Track = cut size of the track the curtain hangs on.`, y, 9);
+    y = note(`Total: ${total} curtain panel(s). Final size = measured height - ${CURTAIN_HEIGHT_DEDUCTION}". Track = cut size of the track the curtain hangs on.`, y, 9);
     for (const [fabric, rows] of byFabric) {
         const comment = job.fabricComments[fabric];
         table({

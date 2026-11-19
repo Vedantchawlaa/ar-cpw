@@ -5,8 +5,11 @@
 // The track rules mirror the "Sizes to Share" tab, so the file prints the same
 // final sizes and the same cutting plan input:
 //   final track size = size - 3" per finial - 0.5" per endcap - 3" per motor
-//   curtain final height = height - 4"
+//   curtain final height = height - CURTAIN_HEIGHT_DEDUCTION (3")
 // A curtain with no style / mount saved counts as pinch pleat, ceiling.
+
+/** Inches taken off the measured height to get a curtain's final (stitching) height. */
+export const CURTAIN_HEIGHT_DEDUCTION = 3;
 
 export interface WindowRow {
     itemId: string;
@@ -195,7 +198,7 @@ export function buildJobSummary(data: any): JobSummary {
                 const curtainType = item.curtainType || "Pinch Pleat"; // default: pinch pleat
                 const mainQty = num(item.quantity || "1");
                 curtains.push({
-                    itemId: item.id, ...where, layer: "Main", quantity: mainQty, height: num(item.height), finalHeight: round2(num(item.height) - 4),
+                    itemId: item.id, ...where, layer: "Main", quantity: mainQty, height: num(item.height), finalHeight: round2(num(item.height) - CURTAIN_HEIGHT_DEDUCTION),
                     fabricId: item.fabricProduct, customFabric: specs[`${item.id}-main-curtain`]?.customFabric, curtainType, mount,
                     trackSize: trackCut.Main ?? null,
                 });
@@ -204,7 +207,7 @@ export function buildJobSummary(data: any): JobSummary {
                     const sheerQty = num(item.sheerQuantity || "1");
                     const h = num(item.sheerHeight || item.height);
                     curtains.push({
-                        itemId: item.id, ...where, layer: "Sheer", quantity: sheerQty, height: h, finalHeight: round2(h - 4),
+                        itemId: item.id, ...where, layer: "Sheer", quantity: sheerQty, height: h, finalHeight: round2(h - CURTAIN_HEIGHT_DEDUCTION),
                         fabricId: item.sheerFabricProduct, customFabric: specs[`${item.id}-sheer-curtain`]?.customFabric, curtainType, mount,
                         trackSize: trackCut.Sheer ?? null,
                     });
