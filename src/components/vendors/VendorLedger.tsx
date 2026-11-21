@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Pencil, Trash2, Plus, X, Check, Wallet, Printer, ReceiptText, Paperclip, Download, CopyX, ChevronRight } from "lucide-react";
 import { BillDialog } from "@/components/vendors/BillDialog";
+import { PeriodFilter, initialPeriod, periodLabel, periodOf } from "@/components/vendors/PeriodFilter";
 import { formatCurrency } from "@/lib/utils";
-import { KIND_INFO, VENDOR_KINDS, duplicateBills, lastGst, lastPrice, ledgerEntries, lineGst, lineTotal, looseLineTotal, sameVendor, summarizeVendor, vendorNames, type BillInfo, type WorkRow } from "@/lib/vendor-ledger";
+import { KIND_INFO, VENDOR_KINDS, duplicateBills, lastGst, lastPrice, ledgerEntries, lineGst, lineTotal, looseLineTotal, isAllTime, sameVendor, vendorNames, vendorStatement, type BillInfo, type WorkRow } from "@/lib/vendor-ledger";
 import { deleteVendorBill, deleteVendorWork, saveVendorWork, type VendorLedgerData } from "@/lib/actions/vendor-ledger-actions";
 
 const rs = (n: number) => `₹${formatCurrency(n)}`;
@@ -38,7 +39,14 @@ export function VendorLedger({ data, today, initialVendor }: { data: VendorLedge
     const [draft, setDraft] = useState<Draft>(() => blank());
     const [edit, setEdit] = useState<Draft>(() => blank());
 
-    const summary = useMemo(() => (vendor ? summarizeVendor(vendor, data.work, data.payouts, data.bills) : null), [vendor, data]);
+    const [periodState, setPeriodState] = useState(() => initialPeriod(today));
+    const period = useMemo(() => periodOf(periodState, today), [periodState, today]);
+    const filtered = !isAllTime(period);
+    const label = periodLabel(periodState, today);
+    const statement = useMemo(() => (vendor ? vendorStatement(vendor, data.work, data.payouts, data.bills, period) : null), [vendor, data, period]);
+    const summary = statement?.period ?? null;
+    const opening = statement?.opening ?? 0;
+    const closing = statement?.closing ?? 0;
     const typeOptions = useMemo(() => {
         // this vendor's items first, then items of other vendors of the same type
         const kindOf = (name: string) => vendors.find((v) => sameVendor(v.name, name))?.kind ?? "OTHER";
@@ -138,17 +146,21 @@ export function VendorLedger({ data, today, initialVendor }: { data: VendorLedge
                 <p className="text-sm text-slate-500 p-8 text-center border border-dashed rounded-lg">Add a vendor in the <Link href="/vendors?tab=directory" className="text-blue-600 underline">Directory</Link> to start their ledger.</p>
             ) : (
                 <>
+                    <PeriodFilter value={periodState} onChange={setPeriodState} />
+
                     {/* Totals */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
-                        <Stat label={info.qty === "Mtrs" ? "Metres" : "Pieces"} value={formatCurrency(summary.pieces)} />
-                        <Stat label="Grand Total" value={rs(summary.workTotal)} />
-                        <Stat label="Paid" value={rs(summary.paid)} tone="green" />
-                        <Stat label={summary.due < 0 ? "Advance" : "Balance Due"} value={rs(Math.abs(summary.due))} tone={summary.due > 0 ? "red" : "green"} />
+                        {filtered
+                            ? <Stat label={opening < 0 ? "Opening advance" : "Opening balance"} value={rs(Math.abs(opening))} hint={period.from ? "before this period" : undefined} />
+                            : <Stat label={info.qty === "Mtrs" ? "Metres" : "Pieces"} value={formatCurrency(summary.pieces)} />}
+                        <Stat label={filtered ? "Bills" : "Grand Total"} value={rs(summary.workTotal)} hint={filtered ? label : undefined} />
+                        <Stat label="Paid" value={rs(summary.paid)} tone="green" hint={filtered ? label : undefined} />
+                        <Stat label={closing < 0 ? "Advance" : "Balance Due"} value={rs(Math.abs(closing))} tone={closing > 0 ? "red" : "green"} hint={filtered && period.to ? `as of ${shortDay(period.to)}` : undefined} />
                     </div>
 
                     <Card id="vendor-bill" className="shadow-sm overflow-hidden">
                         <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                            <CardTitle className="text-lg">{vendor} — Work Ledger</CardTitle>
+                            <CardTitle className="text-lg">{vendor} — Work Ledger{filtered && <span className="ml-2 text-sm font-medium text-slate-500">{label}</span>}</CardTitle>
                             <div className="no-print flex gap-2">
                                 <button onClick={() => setBillDialog({})} className="inline-flex items-center gap-1 text-sm font-semibold text-white bg-blue-600 rounded-md px-3 py-1 hover:bg-blue-700"><ReceiptText className="h-4 w-4" /> New bill</button>
                                 <button onClick={() => window.print()} className="inline-flex items-center gap-1 text-sm text-slate-600 border rounded-md px-2 py-1 hover:bg-slate-50"><Printer className="h-4 w-4" /> Print</button>
@@ -169,6 +181,9 @@ export function VendorLedger({ data, today, initialVendor }: { data: VendorLedge
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {filtered && entries.length === 0 && (
+                                        <tr className="border-t"><td colSpan={8} className="px-3 py-4 text-center text-xs text-slate-400">No bills or work in {label}.</td></tr>
+                                    )}
                                     {entries.map((e) => e.kind === "line" ? (
                                         editingId === e.row.id ? (
                                             <DraftRow key={e.row.id} d={edit} types={typeOptions} labels={info} onChange={setEdit} onType={(t) => setEdit(setType(edit, t))} pending={isPending}
@@ -223,14 +238,17 @@ export function VendorLedger({ data, today, initialVendor }: { data: VendorLedge
                                     <tr>
                                         <td />
                                         <td className="text-right px-3 py-2">{formatCurrency(summary.pieces)}</td>
-                                        <td className="px-3 py-2" colSpan={4}>Grand Total{summary.gst > 0 && " (incl. GST)"}</td>
+                                        <td className="px-3 py-2" colSpan={4}>{filtered ? `Total, ${label}` : "Grand Total"}{summary.gst > 0 && " (incl. GST)"}</td>
                                         <td className="text-right px-3 py-2">{formatCurrency(summary.workTotal)}</td>
                                         <td className="no-print" />
                                     </tr>
-                                    {summary.paid > 0 && (
+                                    {(summary.paid > 0 || opening !== 0) && (
                                         <>
-                                            <tr className="font-medium text-green-700"><td colSpan={2} /><td className="px-3 py-1" colSpan={4}>Paid</td><td className="text-right px-3 py-1">− {formatCurrency(summary.paid)}</td><td className="no-print" /></tr>
-                                            <tr className={summary.due > 0 ? "text-red-700" : "text-green-700"}><td colSpan={2} /><td className="px-3 py-2" colSpan={4}>{summary.due < 0 ? "Advance" : "Balance Due"}</td><td className="text-right px-3 py-2">{formatCurrency(Math.abs(summary.due))}</td><td className="no-print" /></tr>
+                                            {opening !== 0 && (
+                                                <tr className="font-medium text-slate-600"><td colSpan={2} /><td className="px-3 py-1" colSpan={4}>{opening < 0 ? "Advance" : "Balance"} brought forward{period.from && ` (before ${shortDay(period.from)})`}</td><td className="text-right px-3 py-1">{opening < 0 ? "−" : "+"} {formatCurrency(Math.abs(opening))}</td><td className="no-print" /></tr>
+                                            )}
+                                            {summary.paid > 0 && <tr className="font-medium text-green-700"><td colSpan={2} /><td className="px-3 py-1" colSpan={4}>Paid{filtered && `, ${label}`}</td><td className="text-right px-3 py-1">− {formatCurrency(summary.paid)}</td><td className="no-print" /></tr>}
+                                            <tr className={closing > 0 ? "text-red-700" : "text-green-700"}><td colSpan={2} /><td className="px-3 py-2" colSpan={4}>{closing < 0 ? "Advance" : "Balance Due"}{filtered && period.to && ` as of ${shortDay(period.to)}`}</td><td className="text-right px-3 py-2">{formatCurrency(Math.abs(closing))}</td><td className="no-print" /></tr>
                                         </>
                                     )}
                                 </tfoot>
@@ -251,9 +269,11 @@ export function VendorLedger({ data, today, initialVendor }: { data: VendorLedge
                             </Card>
                         )}
                         <Card className="shadow-sm">
-                            <CardHeader className="pb-2"><CardTitle className="text-sm uppercase tracking-wider text-slate-500 flex items-center gap-2"><Wallet className="h-4 w-4" /> Payments</CardTitle></CardHeader>
+                            <CardHeader className="pb-2"><CardTitle className="text-sm uppercase tracking-wider text-slate-500 flex items-center gap-2"><Wallet className="h-4 w-4" /> Payments{filtered && <span className="normal-case tracking-normal font-normal text-slate-400">· {label}</span>}</CardTitle></CardHeader>
                             <CardContent className="space-y-1.5 text-sm">
-                                {summary.payments.length === 0 ? (
+                                {summary.payments.length === 0 && filtered ? (
+                                    <p className="text-slate-500 text-xs">No payments in {label}.</p>
+                                ) : summary.payments.length === 0 ? (
                                     <p className="text-slate-500 text-xs">No payments yet. Add an expense in <b>Transactions</b> (any category) with &quot;{vendor}&quot; in the description — it shows here automatically.</p>
                                 ) : summary.payments.map((p) => (
                                     <div key={p.id} className="flex justify-between gap-2"><span className="text-slate-600 truncate">{shortDay(p.date)} · {p.description}</span><span className="font-semibold text-green-700 shrink-0">{rs(p.amount)}</span></div>
@@ -272,12 +292,13 @@ export function VendorLedger({ data, today, initialVendor }: { data: VendorLedge
     );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "green" | "red" }) {
+function Stat({ label, value, tone, hint }: { label: string; value: string; tone?: "green" | "red"; hint?: string }) {
     const color = tone === "green" ? "text-green-700" : tone === "red" ? "text-red-700" : "text-slate-900";
     return (
         <div className="rounded-lg border bg-white p-3 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
             <p className={`text-xl font-bold ${color}`}>{value}</p>
+            {hint && <p className="text-[11px] text-slate-400">{hint}</p>}
         </div>
     );
 }

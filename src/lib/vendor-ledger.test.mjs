@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { summarizeVendor, paymentIsFor, lastPrice, vendorNames, mergeVendors, asKind, lineTotal, lastGst, ledgerEntries, duplicateBills, looseLineTotal } from "./vendor-ledger.ts";
+import { summarizeVendor, paymentIsFor, lastPrice, vendorNames, mergeVendors, asKind, lineTotal, lastGst, ledgerEntries, duplicateBills, looseLineTotal, vendorStatement, monthPeriod, prevMonth } from "./vendor-ledger.ts";
 
 // The vendor sheet: grand total 10555
 const sheet = [
@@ -128,4 +128,33 @@ test("loose lines with GST round to the rupee (A1 style)", () => {
     assert.equal(s.workTotal, 53398);
     assert.equal(s.due, 33398);
     assert.equal(Number.isInteger(s.workTotal), true);
+});
+
+test("monthly statement: opening balance, period bills and payments, closing", () => {
+    const nov = monthPeriod("2026-11");
+    assert.deepEqual(nov, { from: "2026-11-01", to: "2026-11-30" });
+    assert.deepEqual(monthPeriod("2028-02"), { from: "2028-02-01", to: "2028-02-29" });
+    assert.equal(prevMonth("2026-01"), "2025-12");
+    const s = vendorStatement("Parveen", sheet, payouts, [], nov);
+    assert.equal(s.opening, 3305); // Oct work 8305 - Oct payment 5000
+    assert.equal(s.period.workTotal, 2250);
+    assert.equal(s.period.paid, 2000);
+    assert.equal(s.closing, 3555); // same as the all-time balance
+    const all = vendorStatement("Parveen", sheet, payouts, [], { from: null, to: null });
+    assert.equal(all.opening, 0);
+    assert.equal(all.closing, 3555);
+    // a date range: only Oct 26 - Nov 2
+    const r = vendorStatement("Parveen", sheet, payouts, [], { from: "2026-10-26", to: "2026-11-02" });
+    assert.equal(r.period.pieces, 40);
+    assert.equal(r.period.paid, 0);
+});
+
+test("a bill counts on its bill date, never split across months", () => {
+    const work = [
+        { id: "a", vendor: "K", nos: 1, type: "x", date: "2026-10-30", price: 100, billId: "b1" },
+        { id: "b", vendor: "K", nos: 1, type: "y", date: "2026-11-01", price: 50, billId: "b1" },
+    ];
+    const bills = [{ id: "b1", vendor: "K", refNo: "1", date: "2026-11-01", gstPercent: null, roundOff: null, notes: null, attachmentId: null, fileName: null }];
+    assert.equal(vendorStatement("K", work, [], bills, monthPeriod("2026-11")).period.workTotal, 150);
+    assert.equal(vendorStatement("K", work, [], bills, monthPeriod("2026-10")).period.workTotal, 0);
 });

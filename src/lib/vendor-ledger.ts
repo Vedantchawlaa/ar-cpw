@@ -197,6 +197,48 @@ export function summarizeVendor(vendor: string, work: WorkRow[], payouts: Paymen
     };
 }
 
+/** A date filter, both ends inclusive (YYYY-MM-DD); null = open-ended. */
+export interface Period { from: string | null; to: string | null }
+
+export const ALL_TIME: Period = { from: null, to: null };
+export const isAllTime = (p: Period) => !p.from && !p.to;
+export const inPeriod = (date: string, p: Period) => (!p.from || date >= p.from) && (!p.to || date <= p.to);
+
+/** First and last day of a month given as YYYY-MM. */
+export function monthPeriod(month: string): Period {
+    const [y, m] = month.split("-").map(Number);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
+}
+
+/** The month before a YYYY-MM month. */
+export function prevMonth(month: string): string {
+    const [y, m] = month.split("-").map(Number);
+    return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+}
+
+export interface VendorStatement {
+    period: VendorSummary; // only the bills, lines and payments inside the period
+    opening: number; // balance due carried in from before the period (negative = advance)
+    closing: number; // opening + the period's due
+}
+
+/**
+ * A vendor's account for a date range. A line in a bill counts on the bill's
+ * date (so a bill is never split across periods); a loose line on its own date.
+ */
+export function vendorStatement(vendor: string, work: WorkRow[], payouts: PaymentRow[], bills: BillInfo[], p: Period): VendorStatement {
+    const billDate = new Map(bills.map((b) => [b.id, b.date]));
+    const dateOf = (r: WorkRow) => (r.billId && billDate.get(r.billId)) || r.date;
+    const period = summarizeVendor(vendor, work.filter((r) => inPeriod(dateOf(r), p)), payouts.filter((x) => inPeriod(x.date, p)), bills);
+    let opening = 0;
+    if (p.from) {
+        const before = (d: string) => d < p.from!;
+        opening = summarizeVendor(vendor, work.filter((r) => before(dateOf(r))), payouts.filter((x) => before(x.date)), bills).due;
+    }
+    return { period, opening, closing: round2(opening + period.due) };
+}
+
 /** Price to pre-fill for a vendor + type: the last price used for it. */
 export function lastPrice(work: WorkRow[], vendor: string, type: string): number | null {
     const t = type.trim().toLowerCase();

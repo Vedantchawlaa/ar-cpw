@@ -18,7 +18,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
                 {!ledger.ok
                     ? <p className="text-sm text-red-600 p-6 border rounded-lg bg-red-50">{ledger.error}</p>
                     : tab === "directory"
-                        ? <VendorDirectory data={ledger.data} />
+                        ? <VendorDirectory data={ledger.data} today={businessNow().date} />
                         : <VendorLedger key={vendor ?? ""} data={ledger.data} today={businessNow().date} initialVendor={vendor} />}
             </div>
         );

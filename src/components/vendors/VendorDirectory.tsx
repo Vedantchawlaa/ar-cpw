@@ -7,13 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Pencil, Trash2, Plus, Phone, MapPin, NotebookPen } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { KIND_INFO, VENDOR_KINDS, summarizeVendor, type VendorInfo, type VendorKind } from "@/lib/vendor-ledger";
+import { PeriodFilter, initialPeriod, periodLabel, periodOf } from "@/components/vendors/PeriodFilter";
+import { KIND_INFO, VENDOR_KINDS, isAllTime, summarizeVendor, vendorStatement, type VendorInfo, type VendorKind } from "@/lib/vendor-ledger";
 import { deleteVendor, saveVendor, type VendorLedgerData } from "@/lib/actions/vendor-ledger-actions";
 
 interface Form { name: string; kind: VendorKind; phone: string; address: string; notes: string }
 const empty = (kind: VendorKind = "FABRIC"): Form => ({ name: "", kind, phone: "", address: "", notes: "" });
 
-export function VendorDirectory({ data }: { data: VendorLedgerData }) {
+export function VendorDirectory({ data, today }: { data: VendorLedgerData; today: string }) {
     const router = useRouter();
     const [form, setForm] = useState<Form | null>(null);
     const [editing, setEditing] = useState<VendorInfo | null>(null); // the vendor being edited; null = adding
@@ -21,6 +22,17 @@ export function VendorDirectory({ data }: { data: VendorLedgerData }) {
     const [isPending, startTransition] = useTransition();
 
     const due = useMemo(() => new Map(data.vendors.map((v) => [v.name, summarizeVendor(v.name, data.work, data.payouts, data.bills)])), [data]);
+
+    // Bills and payments inside the chosen period
+    const [periodState, setPeriodState] = useState(() => initialPeriod(today));
+    const period = useMemo(() => periodOf(periodState, today), [periodState, today]);
+    const filtered = !isAllTime(period);
+    const label = periodLabel(periodState, today);
+    const inRange = useMemo(() => new Map(filtered ? data.vendors.map((v) => [v.name, vendorStatement(v.name, data.work, data.payouts, data.bills, period).period]) : []), [data, filtered, period]);
+    const rangeTotal = (names: string[]) => names.reduce((t, n) => {
+        const s = inRange.get(n);
+        return { bills: r2(t.bills + (s?.workTotal ?? 0)), paid: r2(t.paid + (s?.paid ?? 0)) };
+    }, { bills: 0, paid: 0 });
 
     function open(v?: VendorInfo, kind?: VendorKind) {
         setError(null);
@@ -83,6 +95,19 @@ export function VendorDirectory({ data }: { data: VendorLedgerData }) {
             )}
             {!form && error && <p className="text-sm text-red-600">{error}</p>}
 
+            <PeriodFilter value={periodState} onChange={setPeriodState} />
+
+            {filtered && (() => {
+                const t = rangeTotal(data.vendors.map((v) => v.name));
+                return (
+                    <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3 shadow-sm">
+                        <span className="text-sm font-semibold text-slate-600">{label}, all vendors</span>
+                        <span className="text-sm text-slate-600">Bills <b className="text-lg text-slate-900">₹{formatCurrency(t.bills)}</b></span>
+                        <span className="text-sm text-slate-600">Paid <b className="text-lg text-green-700">₹{formatCurrency(t.paid)}</b></span>
+                    </div>
+                );
+            })()}
+
             {(() => {
                 const all = sumDue(data.vendors.map((v) => due.get(v.name)?.due ?? 0));
                 return all.due > 0 || all.advance > 0 ? (
@@ -102,6 +127,15 @@ export function VendorDirectory({ data }: { data: VendorLedgerData }) {
                         <CardHeader className="pb-2 bg-slate-50 border-b flex flex-row items-center justify-between">
                             <CardTitle className="text-sm uppercase tracking-wider text-slate-600">{KIND_INFO[kind].label} <span className="text-slate-400">({group.length})</span></CardTitle>
                             <div className="flex items-center gap-4">
+                                {filtered && (() => {
+                                    const t = rangeTotal(group.map((v) => v.name));
+                                    return (t.bills > 0 || t.paid > 0) && (
+                                        <span className="text-right text-xs leading-tight text-slate-500">
+                                            <span className="block">Bills ₹{formatCurrency(t.bills)}</span>
+                                            <span className="block text-green-700">Paid ₹{formatCurrency(t.paid)}</span>
+                                        </span>
+                                    );
+                                })()}
                                 {(groupDue.due > 0 || groupDue.advance > 0) && (
                                     <span className="text-right text-xs leading-tight">
                                         <span className={`block font-bold ${groupDue.due > 0 ? "text-red-600" : "text-green-600"}`}>Balance due ₹{formatCurrency(groupDue.due)}</span>
@@ -116,6 +150,7 @@ export function VendorDirectory({ data }: { data: VendorLedgerData }) {
                                 <p className="text-xs text-slate-400 px-4 py-3">None yet.</p>
                             ) : group.map((v) => {
                                 const s = due.get(v.name);
+                                const ps = inRange.get(v.name);
                                 return (
                                     <div key={v.name} className="flex items-start justify-between gap-3 px-4 py-3 border-t first:border-t-0">
                                         <div className="min-w-0 space-y-0.5">
@@ -125,6 +160,12 @@ export function VendorDirectory({ data }: { data: VendorLedgerData }) {
                                             {v.notes && <p className="text-xs text-slate-500">{v.notes}</p>}
                                         </div>
                                         <div className="flex items-center gap-3 shrink-0">
+                                            {ps && (ps.workTotal > 0 || ps.paid > 0) && (
+                                                <div className="text-right text-xs border-r pr-3" title={label}>
+                                                    <p className="text-slate-500">Bills ₹{formatCurrency(ps.workTotal)}</p>
+                                                    <p className="text-green-700">Paid ₹{formatCurrency(ps.paid)}</p>
+                                                </div>
+                                            )}
                                             {s && (s.workTotal > 0 || s.paid > 0) && (
                                                 <div className="text-right text-xs">
                                                     <p className="text-slate-500">Total ₹{formatCurrency(s.workTotal)}</p>
@@ -145,6 +186,8 @@ export function VendorDirectory({ data }: { data: VendorLedgerData }) {
         </div>
     );
 }
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Dues of several vendors: what is owed, and advances kept apart (one vendor's advance doesn't cancel another's due). */
 function sumDue(dues: number[]) {
