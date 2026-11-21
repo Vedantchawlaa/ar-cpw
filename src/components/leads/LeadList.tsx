@@ -142,7 +142,7 @@ export function LeadList({ leads, onEdit }: LeadListProps) {
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3 text-slate-600">
-                                            {formatDate(lead.lastContacted)}
+                                            {lead.lastContacted ? formatDate(lead.lastContacted) : "–"}
                                         </td>
                                         <td className="px-4 py-3">
                                             {(lead as any).nextContactDate ? (

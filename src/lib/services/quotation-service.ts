@@ -1,3 +1,4 @@
+import { canAccessLead } from "./lead-service";
 import prisma from "@/lib/db";
 import { Actor, isAdmin } from "./types";
 
@@ -314,7 +315,7 @@ export async function upsertQuotationRow(actor: Actor, id: string, row: Quotatio
 
     const lead = await (prisma as any).lead.findUnique({ where: { id: row.leadId } });
     if (!lead) return { success: false, error: "Customer not found" };
-    if (!isAdmin(actor) && lead.userId !== actor.id) {
+    if (!canAccessLead(actor, lead)) {
         return { success: false, error: "Unauthorized access to this lead" };
     }
 

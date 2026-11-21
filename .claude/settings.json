@@ -37,7 +37,11 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -m 90 \"http://localhost:3000/transactions\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -m 90 \"http://localhost:3000/vendors?tab=directory\")",
       "Bash(which psql *)",
-      "Read(//opt/homebrew/opt/**)"
+      "Read(//opt/homebrew/opt/**)",
+      "Bash(node --experimental-strip-types --test src/lib/sales-crm.test.mjs)",
+      "Bash(git diff *)",
+      "Bash(node -e \"console.log\\(typeof require\\('react'\\).cache\\)\")",
+      "Bash(pkill -f \"scratchpad/pg/server.mjs\")"
     ],
     "additionalDirectories": [
       "/Users/tushr/ar-cpw/src/app/(protected)/leads/[id]"

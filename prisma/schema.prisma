@@ -11,48 +11,71 @@ datasource db {
 }
 
 model Lead {
-  id                 String      @id @default(uuid())
+  id                 String              @id @default(uuid())
+  leadNo             Int                 @unique @default(autoincrement()) // shown as the Lead ID, e.g. L-1024
   name               String
   city               String
   phone              String
-  description        String?     @db.Text
-  lastContacted      DateTime
-  type               String
-  expectedOrderValue Float
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  nextContactDate    DateTime?
-  quotationShared    Boolean     @default(false)
-  userId             String?
-  user               User?       @relation(fields: [userId], references: [id])
+  description        String?             @db.Text // notes
+  lastContacted      DateTime? // null = never contacted
+  type               String // priority: Hot | Warm | Cold
+  expectedOrderValue Float // estimated budget
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  nextContactDate    DateTime? // next follow-up (earliest pending LeadFollowUp, kept in sync)
+  quotationShared    Boolean             @default(false)
+  userId             String? // who created the lead
+  user               User?               @relation(fields: [userId], references: [id])
+  // Sales CRM (see src/lib/sales-crm.ts)
+  altPhone           String?
+  whatsapp           String?
+  email              String?
+  address            String?             @db.Text
+  source             String? // Walk-in, Website, Referral, ...
+  productInterest    String[]            @default([]) // Curtains, Blinds, Wallpaper, ...
+  status             String              @default("NEW") // NEW | ASSIGNED | CONTACTED | INTERESTED | QUOTATION_SENT | FOLLOW_UP | NEGOTIATION | CONVERTED | LOST
+  assignedToId       String?
+  assignedTo         User?               @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedAt         DateTime?
+  convertedAt        DateTime?
+  lostReason         String?
   quotations         Quotation[]
   measurement        Measurement?
+  statusHistory      LeadStatusHistory[]
+  assignments        LeadAssignment[]
+  activities         LeadActivity[]
+  followUps          LeadFollowUp[]
+  calls              CallLog[]
 
+  @@index([assignedToId, status])
+  @@index([status])
+  @@index([nextContactDate])
+  @@index([createdAt])
   @@schema("public")
 }
 
 model Quotation {
-  id             String          @id @default(uuid())
-  number         String          @unique
-  date           DateTime        @default(now())
-  leadId         String
-  userId         String?
-  subtotal       Float
-  tax            Float           @default(0)
-  discount       Float           @default(0)
-  discountCode   String?
-  discountType   String          @default("FIXED")
-  total          Float
-  status         String          @default("DRAFT")
-  description    String?         @db.Text
-  services       Json?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  receivedAmount Float           @default(0)
+  id              String          @id @default(uuid())
+  number          String          @unique
+  date            DateTime        @default(now())
+  leadId          String
+  userId          String?
+  subtotal        Float
+  tax             Float           @default(0)
+  discount        Float           @default(0)
+  discountCode    String?
+  discountType    String          @default("FIXED")
+  total           Float
+  status          String          @default("DRAFT")
+  description     String?         @db.Text
+  services        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  receivedAmount  Float           @default(0)
   previousBalance Float           @default(0)
-  deadline       DateTime?
-  lead           Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  items          QuotationItem[]
+  deadline        DateTime?
+  lead            Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  items           QuotationItem[]
 
   @@schema("public")
 }
@@ -72,16 +95,16 @@ model QuotationItem {
 }
 
 model Product {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  category      String   @default("")
-  unit          String   @default("unit")
+  id            String          @id @default(uuid())
+  name          String          @unique
+  category      String          @default("")
+  unit          String          @default("unit")
   rate          Float
-  stockQuantity Int      @default(0) // ACCESSORY: count in hand. FABRIC/TRACK totals come from StockPiece.
-  stockKind     String   @default("ACCESSORY") // FABRIC (metres) | TRACK (inches) | ACCESSORY (nos) | OTHER (not stocked)
+  stockQuantity Int             @default(0) // ACCESSORY: count in hand. FABRIC/TRACK totals come from StockPiece.
+  stockKind     String          @default("ACCESSORY") // FABRIC (metres) | TRACK (inches) | ACCESSORY (nos) | OTHER (not stocked)
   lowStockAt    Float? // alert when available stock falls below this, in the kind's base unit
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   stockPieces   StockPiece[]
   stockMoves    StockMovement[]
 
@@ -129,8 +152,8 @@ model ShopProduct {
   description    String?      @db.Text
   category       String       @default("Curtains")
   tag            String?
-  images         String[]     // Array of image URLs
-  specifications Json?        // JSON object for specs like material, dimensions, etc.
+  images         String[] // Array of image URLs
+  specifications Json? // JSON object for specs like material, dimensions, etc.
   stock          Int          @default(0)
   rating         Float        @default(0)
   reviewCount    Int          @default(0)
@@ -145,7 +168,7 @@ model ShopReview {
   id            String      @id @default(uuid())
   shopProductId String
   userId        String
-  rating        Int         // 1-5 stars
+  rating        Int // 1-5 stars
   comment       String?     @db.Text
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -158,18 +181,30 @@ model ShopReview {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  password     String
-  name         String
-  role         String        @default("user") // admin, user, customer
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  leads        Lead[]
-  transactions Transaction[]
-  shopReviews  ShopReview[]
+  id            String            @id @default(uuid())
+  email         String            @unique
+  password      String
+  name          String
+  role          String            @default("user") // admin, user, customer
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  // Sales CRM: staff ("user") are sales executives unless made a MANAGER; admins see everything
+  salesRole     String? // MANAGER | EXECUTIVE | null (= EXECUTIVE)
+  managerId     String? // the sales manager this person reports to
+  manager       User?             @relation("SalesTeam", fields: [managerId], references: [id], onDelete: SetNull)
+  team          User[]            @relation("SalesTeam")
+  phone         String? // the person's own mobile, used for click-to-call via the telephony provider
+  leads         Lead[]
+  assignedLeads Lead[]            @relation("LeadAssignee")
+  transactions  Transaction[]
+  shopReviews   ShopReview[]
   plannerTopics PlannerTopic[]
+  calls         CallLog[]
+  followUps     LeadFollowUp[]    @relation("FollowUpAssignee")
+  workSessions  WorkSession[]
+  workEvents    WorkStatusEvent[]
 
+  @@index([managerId])
   @@schema("public")
 }
 
@@ -200,8 +235,8 @@ model Order {
   subtotal      Float
   tax           Float
   total         Float
-  paymentMethod String      // razorpay, cod
-  paymentId     String?     // Razorpay payment ID
+  paymentMethod String // razorpay, cod
+  paymentId     String? // Razorpay payment ID
   status        String      @default("pending") // pending, confirmed, processing, shipped, delivered, cancelled
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -213,31 +248,31 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(uuid())
-  orderId   String
-  productId String
+  id          String @id @default(uuid())
+  orderId     String
+  productId   String
   productName String
   productRate Float
-  quantity  Int
-  subtotal  Float
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  quantity    Int
+  subtotal    Float
+  order       Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@schema("public")
 }
 
 model Measurement {
-  id           String   @id @default(uuid())
-  leadId       String?  @unique
-  customerName String?
-  title        String?
-  data         Json     // Nested structure: Floor -> Room -> Window
-  images       String[] // URLs of uploaded measurement comments
-  referenceFiles Json?  // [{ name, url }] of uploaded reference PDFs/files
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  lead         Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid())
+  leadId         String?  @unique
+  customerName   String?
+  title          String?
+  data           Json // Nested structure: Floor -> Room -> Window
+  images         String[] // URLs of uploaded measurement comments
+  referenceFiles Json? // [{ name, url }] of uploaded reference PDFs/files
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lead           Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@schema("public")
 }
@@ -253,27 +288,27 @@ model Attachment {
 }
 
 model MonthlyBalance {
-  id               String   @id @default(uuid())
-  month            Int      // 0-11 (Jan=0, Dec=11)
-  year             Int
-  startingBalance  Float    @default(0)
-  endingBalance    Float?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(uuid())
+  month           Int // 0-11 (Jan=0, Dec=11)
+  year            Int
+  startingBalance Float    @default(0)
+  endingBalance   Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@unique([month, year])
   @@schema("public")
 }
 
 model WeeklyBankBalance {
-  id              String   @id @default(uuid())
-  weekStart       DateTime // Always a Monday (time zeroed to 00:00:00 UTC)
-  bankBalance     Float    // Actual bank balance
-  cashBalance     Float    @default(0) // Physical cash in hand
-  recordedNet     Float    // Income - Expenses for that week (computed at entry time)
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(uuid())
+  weekStart   DateTime // Always a Monday (time zeroed to 00:00:00 UTC)
+  bankBalance Float // Actual bank balance
+  cashBalance Float    @default(0) // Physical cash in hand
+  recordedNet Float // Income - Expenses for that week (computed at entry time)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([weekStart])
   @@schema("public")
@@ -394,11 +429,11 @@ model FundTransfer {
 
 // Work done by a vendor (one line of their bill): nos x type at a price.
 model VendorWork {
-  id        String   @id @default(uuid())
-  vendor    String
-  nos       Float
-  type      String
-  date      DateTime // business day at 00:00 UTC
+  id         String   @id @default(uuid())
+  vendor     String
+  nos        Float
+  type       String
+  date       DateTime // business day at 00:00 UTC
   price      Float
   notes      String?
   gstPercent Float? // null = no GST
@@ -443,5 +478,142 @@ model VendorBill {
 
   @@index([vendor])
   @@index([fileHash])
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Sales CRM: Sales Funnel > Call Manager > Lead Management
+// ---------------------------------------------------------------------------
+
+// Every status change of a lead, with who made it.
+model LeadStatusHistory {
+  id          String   @id @default(uuid())
+  leadId      String
+  fromStatus  String?
+  toStatus    String
+  changedById String?
+  note        String?
+  createdAt   DateTime @default(now())
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@index([toStatus, createdAt])
+  @@schema("public")
+}
+
+// Every (re)assignment of a lead.
+model LeadAssignment {
+  id           String   @id @default(uuid())
+  leadId       String
+  fromUserId   String?
+  toUserId     String?
+  assignedById String?
+  createdAt    DateTime @default(now())
+  lead         Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@schema("public")
+}
+
+// The lead's timeline: created, edited, note, call, follow-up, status, assignment, quotation.
+model LeadActivity {
+  id        String   @id @default(uuid())
+  leadId    String
+  userId    String?
+  type      String // CREATED | UPDATED | NOTE | CALL | CALL_DIALED | FOLLOW_UP | STATUS | ASSIGNED | IMPORTED
+  summary   String
+  data      Json?
+  createdAt DateTime @default(now())
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@schema("public")
+}
+
+// A scheduled follow-up against a lead.
+model LeadFollowUp {
+  id            String    @id @default(uuid())
+  leadId        String
+  assignedToId  String?
+  createdById   String?
+  dueAt         DateTime
+  notes         String?
+  status        String    @default("PENDING") // PENDING | DONE | RESCHEDULED | CANCELLED
+  outcome       String? // what happened, written when completed
+  completedAt   DateTime?
+  completedById String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedTo    User?     @relation("FollowUpAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([assignedToId, status, dueAt])
+  @@index([leadId])
+  @@index([status, dueAt])
+  @@schema("public")
+}
+
+// One phone call. Only DEVICE (phone call log uploaded by the CPW Team app) and
+// PROVIDER (cloud telephony webhook) calls are verified and count towards talk time;
+// MANUAL calls are written by the salesperson and are shown as self-reported.
+model CallLog {
+  id             String    @id @default(uuid())
+  leadId         String?
+  userId         String? // sales executive
+  phone          String // the customer's number as recorded
+  phoneKey       String // last 10 digits, for matching to leads
+  direction      String // OUTGOING | INCOMING
+  status         String // CONNECTED | MISSED | REJECTED | NOT_ANSWERED | BUSY | FAILED
+  source         String // DEVICE | PROVIDER | MANUAL
+  provider       String? // exotel, ... (PROVIDER calls)
+  externalId     String? // id from the device / provider, to drop duplicates
+  startedAt      DateTime
+  answeredAt     DateTime?
+  endedAt        DateTime?
+  durationSec    Int? // total, ring + talk
+  talkSec        Int? // answered time only
+  recordingUrl   String?
+  notes          String?
+  nextFollowUpAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lead           Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([source, externalId])
+  @@index([userId, startedAt])
+  @@index([leadId, startedAt])
+  @@index([startedAt])
+  @@index([phoneKey])
+  @@schema("public")
+}
+
+// Start Work .. End Work. At most one open session per user (partial unique index in SQL).
+model WorkSession {
+  id        String            @id @default(uuid())
+  userId    String
+  startedAt DateTime          @default(now())
+  endedAt   DateTime?
+  endNote   String? // e.g. "Closed automatically at midnight"
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events    WorkStatusEvent[]
+
+  @@index([userId, startedAt])
+  @@schema("public")
+}
+
+// Timestamped status history inside a session. At most one open event per user.
+model WorkStatusEvent {
+  id        String      @id @default(uuid())
+  userId    String
+  sessionId String
+  status    String // AVAILABLE | ON_CALL | BREAK | LUNCH | MEETING
+  startedAt DateTime    @default(now())
+  endedAt   DateTime?
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session   WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt])
+  @@index([sessionId])
   @@schema("public")
 }

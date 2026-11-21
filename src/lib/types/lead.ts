@@ -5,7 +5,7 @@ export interface Lead {
     name: string;
     city: string;
     phone: string;
-    lastContacted: Date;
+    lastContacted: Date | null;
     type: LeadType;
     expectedOrderValue: number;
     quotationShared: boolean;

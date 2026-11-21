@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Fragment, useState } from "react";
+import { SalesFunnelNav } from "./SalesFunnelNav";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Bell, LayoutDashboard, Users, FileText, Package, ShoppingBag, DollarSign, Settings, Smartphone, Ruler, Store, Clock, UserCog, NotebookPen } from "lucide-react";
@@ -169,6 +170,7 @@ export function MobileNav({ role, userName, reminderCount = 0 }: MobileNavProps)
                     <div className="flex-1 overflow-y-auto py-4">
                         <nav className="grid items-start px-4 text-sm font-medium space-y-1">
                             {filteredNavItems.map((item) => (
+                                <Fragment key={item.href}>
                                 <Link
                                     key={item.href}
                                     href={item.href}
@@ -186,7 +188,9 @@ export function MobileNav({ role, userName, reminderCount = 0 }: MobileNavProps)
                                         <span className="ml-auto h-2 w-2 rounded-full bg-blue-500 ring-2 ring-white" />
                                     )}
                                 </Link>
-                            ))}
+                                {item.href === "/leads" && (role === "admin" || role === "user") && <SalesFunnelNav large onNavigate={() => setIsOpen(false)} />}
+                                </Fragment>
+                        ))}
                         </nav>
                     </div>
 

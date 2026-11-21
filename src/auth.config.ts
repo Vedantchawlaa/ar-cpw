@@ -10,8 +10,10 @@ export const authConfig = {
             const isLoggedIn = !!auth?.user;
             const role = (auth?.user as any)?.role;
 
-            const isOnAdminRoute = nextUrl.pathname.startsWith("/dashboard") || nextUrl.pathname.startsWith("/sales") || nextUrl.pathname.startsWith("/staff") || nextUrl.pathname.startsWith("/attendance");
-            const isOnProtectedRoute = isOnAdminRoute || nextUrl.pathname.startsWith("/leads") || nextUrl.pathname.startsWith("/quotations") || nextUrl.pathname.startsWith("/reminders") || nextUrl.pathname.startsWith("/planner") || nextUrl.pathname.startsWith("/products");
+            const p = nextUrl.pathname;
+            const under = (base: string) => p === base || p.startsWith(base + "/");
+            const isOnAdminRoute = nextUrl.pathname.startsWith("/dashboard") || under("/sales") || nextUrl.pathname.startsWith("/staff") || nextUrl.pathname.startsWith("/attendance");
+            const isOnProtectedRoute = isOnAdminRoute || nextUrl.pathname.startsWith("/leads") || nextUrl.pathname.startsWith("/quotations") || nextUrl.pathname.startsWith("/reminders") || nextUrl.pathname.startsWith("/planner") || nextUrl.pathname.startsWith("/products") || under("/sales-funnel");
 
             if (isOnAdminRoute) {
                 if (isLoggedIn && role === "admin") return true;

@@ -1,5 +1,6 @@
 "use server";
 
+import { leadAccessWhere } from "@/lib/services/lead-service";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import db from "@/lib/db";
@@ -20,7 +21,7 @@ export interface ClientFileData {
         description: string | null;
         expectedOrderValue: number;
         createdAt: string;
-        lastContacted: string;
+        lastContacted: string | null;
         nextContactDate: string | null;
         handledBy: string | null;
     };
@@ -71,9 +72,9 @@ export async function getClientFileList(): Promise<ClientFileListRow[]> {
     if (!session?.user) return [];
     const actor = toActor(session.user);
     try {
-        // Same access rule as the leads list: admins see every client, staff only their own
+        // Same access rule as the leads list: admins see every client, staff their own and assigned ones
         const leads = await db.lead.findMany({
-            where: actor.role === "admin" ? {} : { userId: actor.id },
+            where: leadAccessWhere(actor),
             orderBy: { createdAt: "desc" },
             select: {
                 id: true, name: true, phone: true, city: true, type: true, createdAt: true,
@@ -146,7 +147,7 @@ export async function getClientFileData(leadId: string): Promise<{ ok: true; dat
                     description: lead.description,
                     expectedOrderValue: lead.expectedOrderValue,
                     createdAt: lead.createdAt.toISOString(),
-                    lastContacted: lead.lastContacted.toISOString(),
+                    lastContacted: iso(lead.lastContacted),
                     nextContactDate: iso(lead.nextContactDate),
                     handledBy: handler?.name ?? null,
                 },

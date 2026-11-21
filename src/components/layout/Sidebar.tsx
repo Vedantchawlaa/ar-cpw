@@ -7,8 +7,9 @@ import { Bell, LayoutDashboard, LineChart, Package, Settings, Users, FileText, Z
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { getReminderCount } from "@/lib/actions/reminder-actions";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { SalesFunnelNav } from "./SalesFunnelNav";
 
 export function Sidebar() {
     const pathname = usePathname();
@@ -161,6 +162,7 @@ export function Sidebar() {
                 <div className="flex-1 overflow-auto py-4">
                     <nav className="grid items-start px-4 text-sm font-medium lg:px-4 space-y-1">
                         {filteredNavItems.map((item) => (
+                            <Fragment key={item.href}>
                             <Link
                                 key={item.href}
                                 href={item.href}
@@ -177,6 +179,8 @@ export function Sidebar() {
                                     <span className="ml-auto h-2 w-2 rounded-full bg-blue-500 ring-4 ring-slate-50/50 group-hover:ring-slate-100/50" />
                                 )}
                             </Link>
+                            {item.href === "/leads" && (role === "admin" || role === "user") && <SalesFunnelNav />}
+                            </Fragment>
                         ))}
                     </nav>
                 </div>
