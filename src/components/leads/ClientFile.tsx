@@ -1,44 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FileDown, Loader2, Phone, MapPin, User, CalendarClock } from "lucide-react";
+import { Loader2, Phone, MapPin, User, CalendarClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { getClientFileData, updateCurtainStyles, type ClientFileData, type CurtainStyleChange } from "@/lib/actions/client-file-actions";
+import { getClientFileData, updateCurtainStyles, type CurtainStyleChange } from "@/lib/actions/client-file-actions";
 import { cn, formatCurrency } from "@/lib/utils";
 import { buildJobSummary, trackTotalsByProduct, type WindowRow } from "@/lib/client-file";
 import { formatFeetInches } from "@/lib/stock-units";
+import { DownloadClientFileButton } from "./ClientFileButton";
 
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "-");
 
-/** Download button on its own, for the page header. Loads the data when clicked. */
-export function DownloadClientFileButton({ leadId, data, compact }: { leadId: string; data?: ClientFileData | null; compact?: boolean }) {
-    const [busy, setBusy] = useState(false);
-    const download = async () => {
-        setBusy(true);
-        try {
-            let file = data ?? null;
-            if (!file) {
-                const res = await getClientFileData(leadId);
-                if (!res.ok) return alert(res.error);
-                file = res.data;
-            }
-            const { downloadClientFilePdf } = await import("@/lib/client-file-pdf");
-            await downloadClientFilePdf(file);
-        } catch (err) {
-            console.error(err);
-            alert("Could not create the client file.");
-        } finally {
-            setBusy(false);
-        }
-    };
-    return (
-        <Button onClick={download} disabled={busy} className="gap-2">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-            {busy ? "Preparing..." : compact ? "Download" : "Download Client File"}
-        </Button>
-    );
-}
+export { DownloadClientFileButton };
 
 export function ClientFile({ leadId }: { leadId: string }) {
     const [result, setResult] = useState<Awaited<ReturnType<typeof getClientFileData>> | null>(null);
@@ -176,6 +150,21 @@ export function ClientFile({ leadId }: { leadId: string }) {
                                 ))}
                             </tbody>
                         </table>
+                    </CardContent>
+                </Card>
+            )}
+
+            {!!file.measurement?.photos.length && (
+                <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-base">Measurement photos ({file.measurement.photos.length})</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                        {file.measurement.photos.map((p) => (
+                            <a key={p.url} href={p.url} target="_blank" rel="noreferrer" className="group block">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={p.url} alt={p.label} loading="lazy" className="aspect-[4/3] w-full rounded-md border bg-slate-50 object-cover group-hover:opacity-90" />
+                                <p className="mt-1 truncate text-xs text-slate-600">{p.label}</p>
+                            </a>
+                        ))}
                     </CardContent>
                 </Card>
             )}

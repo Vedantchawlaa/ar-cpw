@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Search, ChevronDown, X, Check } from 'lucide-react';
+import { Search, ChevronDown, X, Check, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from './Input';
 
@@ -22,6 +22,9 @@ interface SearchableSelectProps {
     renderOption?: (option: Option) => React.ReactNode;
     allowClear?: boolean;
     editable?: boolean; // New prop: allows manual text entry
+    /** Shows an "+ Add" row at the bottom; called with what was typed in the search box. */
+    onCreate?: (query: string) => void;
+    createLabel?: string;
 }
 
 export function SearchableSelect({
@@ -35,6 +38,8 @@ export function SearchableSelect({
     renderOption,
     allowClear = false,
     editable = false,
+    onCreate,
+    createLabel = "Add new",
 }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState("");
@@ -155,6 +160,22 @@ export function SearchableSelect({
                             </div>
                         )}
                     </div>
+                    {onCreate && !editable && (
+                        <button
+                            type="button"
+                            className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm font-medium text-blue-600 hover:bg-blue-50"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const query = searchQuery.trim();
+                                setIsOpen(false);
+                                setSearchQuery("");
+                                onCreate(query);
+                            }}
+                        >
+                            <Plus className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{searchQuery.trim() ? `${createLabel}: "${searchQuery.trim()}"` : createLabel}</span>
+                        </button>
+                    )}
                 </div>
             )}
         </div>

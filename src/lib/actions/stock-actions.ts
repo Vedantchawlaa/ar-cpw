@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import * as stockService from "@/lib/services/stock-service";
 import { toActor } from "@/lib/services/types";
+import { PICKER_CATEGORY, type PickerKind } from "@/lib/stock-units";
 import type { ProductTrackPiece } from "@/lib/track-optimizer";
 import type { TrackCuttingSettings } from "@/lib/track-optimizer";
 
@@ -60,6 +61,55 @@ export async function createStockProduct(input: stockService.NewStockProduct) {
         if (result.success) revalidatePath("/products");
         return result;
     });
+}
+
+/**
+ * Adds a catalogue product straight from a product picker (e.g. the measurement
+ * sheet), so staff can pick it at once. Open to every team member: it only
+ * creates the product, with no stock. Same duplicate-name check as the Stock page.
+ */
+export async function quickAddProduct(input: { name: string; rate: number; kind: PickerKind }) {
+    if (!(await staffActor())) return { success: false as const, error: "Please sign in again." };
+    try {
+        // Same name already in the list (ignoring case/spaces/dashes): hand it back so the picker can merge
+        const existing = await stockService.findProductByLooseName(input.name);
+        if (existing) return { success: false as const, error: `"${existing.name}" is already in the product list.`, duplicate: existing };
+
+        const result = await stockService.createProduct({
+            name: input.name,
+            rate: input.rate,
+            stockKind: input.kind === "BLIND" ? "OTHER" : input.kind,
+            category: PICKER_CATEGORY[input.kind],
+        });
+        if (!result.success) return result;
+        revalidatePath("/products");
+        revalidatePath("/stock");
+        return { success: true as const, product: { id: result.id, name: input.name.trim(), rate: input.rate ?? 0, category: PICKER_CATEGORY[input.kind] } };
+    } catch (error) {
+        console.error("Quick add product failed:", error);
+        return { success: false as const, error: "Could not add the product. Please try again." };
+    }
+}
+
+/**
+ * Merges an existing catalogue product into a picker instead of adding a duplicate:
+ * optionally updates its rate, and sets its category when the picker would not list
+ * it yet (e.g. a track saved under "Accessories"). Stock counts and stock type are
+ * never touched here.
+ */
+export async function mergeProductIntoPicker(input: { id: string; kind: PickerKind; rate?: number | null }) {
+    if (!(await staffActor())) return { success: false as const, error: "Please sign in again." };
+    if (input.rate != null && !(input.rate >= 0)) return { success: false as const, error: "Rate must be zero or more." };
+    try {
+        const product = await stockService.mergeProductForPicker(input.id, input.kind, input.rate ?? null);
+        if (!product) return { success: false as const, error: "That product no longer exists." };
+        revalidatePath("/products");
+        revalidatePath("/stock");
+        return { success: true as const, product };
+    } catch (error) {
+        console.error("Merge product failed:", error);
+        return { success: false as const, error: "Could not update the product. Please try again." };
+    }
 }
 
 export async function updateStockSettings(productId: string, settings: { stockKind?: string; lowStockAt?: number | null }) {

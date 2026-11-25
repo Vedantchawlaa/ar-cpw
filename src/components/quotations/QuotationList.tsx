@@ -9,6 +9,7 @@ import { Plus, Printer, Trash2, MessageSquare, Bell } from "lucide-react";
 import Link from "next/link";
 import { deleteQuotation } from "@/lib/actions/quotation-actions";
 import QuotationPrint from "./QuotationPrint";
+import { DownloadClientFileButton } from "@/components/leads/ClientFileButton";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
 interface QuotationListProps {
@@ -176,6 +177,7 @@ export default function QuotationList({ initialQuotations }: QuotationListProps)
                                             >
                                                 <MessageSquare className="h-4 w-4" />
                                             </Button>
+                                            <DownloadClientFileButton leadId={quotation.leadId} look="icon" variant="outline" className="border-indigo-200 hover:bg-indigo-50" />
                                             <Link href={`/quotations/${quotation.id}`}>
                                                 <Button variant={"outline" as any} size={"sm" as any} disabled={isGenerating}>
                                                     View

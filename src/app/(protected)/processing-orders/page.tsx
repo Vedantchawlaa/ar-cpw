@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { DownloadClientFileButton } from "@/components/leads/ClientFileButton";
 
 export default function ProcessingOrdersPage() {
     const router = useRouter();
@@ -188,6 +189,7 @@ export default function ProcessingOrdersPage() {
                                                     <Button variant="outline" size="sm" onClick={() => router.push(`/quotations/${item.id}`)}>
                                                         View
                                                     </Button>
+                                                    {item.leadId && <DownloadClientFileButton leadId={item.leadId} look="icon" variant="outline" />}
                                                     {item.status !== 'COMPLETED' && (
                                                         <Button
                                                             size="sm"

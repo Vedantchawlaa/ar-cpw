@@ -31,6 +31,21 @@ export function inferStockKind(category: string | null | undefined, name: string
     return "ACCESSORY";
 }
 
+/** "Jumbo Track", "jumbo-track" and "JUMBO  TRACK" all compare equal. */
+export const looseProductName = (name: string) => (name || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+/** Product pickers on the measurement sheet, and the category a product added from each gets. */
+export type PickerKind = "TRACK" | "FABRIC" | "BLIND";
+export const PICKER_CATEGORY: Record<PickerKind, string> = { TRACK: "Tracks", FABRIC: "Fabric", BLIND: "Blind" };
+
+/** Whether the measurement sheet's picker of this kind lists the product. */
+export function listedInPicker(kind: PickerKind, p: { name: string; category?: string | null }) {
+    const n = (p.name || "").toLowerCase(), c = (p.category || "").toLowerCase();
+    if (kind === "TRACK") return n.includes("track") || c.includes("track");
+    if (kind === "FABRIC") return n.includes("fabric") || c === "fabric";
+    return n.includes("blind") || c === "blind";
+}
+
 const trim = (value: number) => Number(value.toFixed(2)).toString();
 
 /** 55 -> `4 ft 7 in`, 60 -> `5 ft`, 7.5 -> `7.5 in`. */

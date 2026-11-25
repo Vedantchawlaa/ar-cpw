@@ -1,5 +1,5 @@
 import db from "@/lib/db";
-import { isPieceKind, isStockKind, isUsedUp, type StockKind } from "@/lib/stock-units";
+import { PICKER_CATEGORY, isPieceKind, isStockKind, isUsedUp, listedInPicker, looseProductName, type PickerKind, type StockKind } from "@/lib/stock-units";
 import { planWithStock, type OptimizerOptions, type ProductTrackPiece, type StockTrackPiece, type StockAwarePlan } from "@/lib/track-optimizer";
 import { Actor } from "./types";
 
@@ -84,6 +84,22 @@ export const DEFAULT_CATEGORY: Record<StockKind, string> = {
     ACCESSORY: "Accessories",
     OTHER: "",
 };
+
+export async function findProductByLooseName(name: string) {
+    const key = looseProductName(name || "");
+    if (!key) return null;
+    const products = await db.product.findMany({ select: { id: true, name: true, rate: true, category: true } });
+    return products.find((p) => looseProductName(p.name) === key) ?? null;
+}
+
+export async function mergeProductForPicker(id: string, kind: PickerKind, rate: number | null) {
+    const product = await db.product.findUnique({ where: { id }, select: { id: true, name: true, rate: true, category: true } });
+    if (!product) return null;
+    const category = listedInPicker(kind, product) ? product.category : PICKER_CATEGORY[kind];
+    const data = { ...(rate != null && rate !== product.rate ? { rate } : {}), ...(category !== product.category ? { category } : {}) };
+    if (Object.keys(data).length === 0) return product;
+    return db.product.update({ where: { id }, data, select: { id: true, name: true, rate: true, category: true } });
+}
 
 export async function createProduct(input: NewStockProduct): Promise<Result<{ id: string }>> {
     const name = input.name?.trim();

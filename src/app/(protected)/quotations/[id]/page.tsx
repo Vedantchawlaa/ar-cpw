@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { ArrowLeft, Printer, Share2 } from "lucide-react";
 import QuotationPrint from "@/components/quotations/QuotationPrint";
+import { DownloadClientFileButton } from "@/components/leads/ClientFileButton";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -35,7 +36,7 @@ export default async function QuotationPage({ params }: PageProps) {
                     </h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* We can add a client-side print button here if needed, but browser print works fine */}
+                    <DownloadClientFileButton leadId={quotation.leadId} variant="outline" />
                 </div>
             </div>
 

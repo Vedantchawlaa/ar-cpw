@@ -41,7 +41,8 @@
       "Bash(node --experimental-strip-types --test src/lib/sales-crm.test.mjs)",
       "Bash(git diff *)",
       "Bash(node -e \"console.log\\(typeof require\\('react'\\).cache\\)\")",
-      "Bash(pkill -f \"scratchpad/pg/server.mjs\")"
+      "Bash(pkill -f \"scratchpad/pg/server.mjs\")",
+      "Bash(git stash *)"
     ],
     "additionalDirectories": [
       "/Users/tushr/ar-cpw/src/app/(protected)/leads/[id]"

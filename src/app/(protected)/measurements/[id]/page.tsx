@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ArrowLeft } from "lucide-react";
+import { DownloadClientFileButton } from "@/components/leads/ClientFileButton";
 
 interface PageProps {
     params: Promise<{
@@ -26,7 +27,7 @@ export default async function MeasurementEditPage({ params }: PageProps) {
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
                 <Link href="/measurements">
                     <Button variant="ghost" size="icon">
                         <ArrowLeft className="h-4 w-4" />
@@ -35,6 +36,11 @@ export default async function MeasurementEditPage({ params }: PageProps) {
                 <h2 className="text-3xl font-bold tracking-tight">
                     {measurement ? "Edit Measurement" : "New Measurement"}
                 </h2>
+                {measurement?.leadId && (
+                    <div className="ml-auto">
+                        <DownloadClientFileButton leadId={measurement.leadId} variant="outline" />
+                    </div>
+                )}
             </div>
 
             <Tabs defaultValue="measurements" className="space-y-4">

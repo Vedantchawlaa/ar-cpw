@@ -5,7 +5,6 @@
 import type { ClientFileData } from "@/lib/actions/client-file-actions";
 import { CURTAIN_HEIGHT_DEDUCTION, buildJobSummary, trackTotalsByProduct, type JobSummary } from "@/lib/client-file";
 import { drawTrackCuttingPlan } from "@/lib/track-cutting-pdf";
-import { formatFeetInches } from "@/lib/stock-units";
 
 const M = 15; // page margin, mm
 const PAGE_W = 210;
@@ -41,13 +40,47 @@ async function loadLogo(): Promise<Logo> {
     }
 }
 
+type Photo = { label: string; data: string; w: number; h: number } | null;
+
+/** Fetches a photo and re-encodes it as a JPEG no wider/taller than 1400px, to keep the PDF small. */
+async function loadPhoto(url: string, label: string): Promise<Photo> {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const objectUrl = URL.createObjectURL(await res.blob());
+        try {
+            const img: HTMLImageElement = await new Promise((resolve, reject) => {
+                const el = new Image();
+                el.onload = () => resolve(el);
+                el.onerror = reject;
+                el.src = objectUrl;
+            });
+            const scale = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return null;
+            ctx.fillStyle = "#ffffff"; // transparent PNGs would turn black as JPEG
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            return { label, data: canvas.toDataURL("image/jpeg", 0.8), w: canvas.width, h: canvas.height };
+        } finally {
+            URL.revokeObjectURL(objectUrl);
+        }
+    } catch {
+        return null;
+    }
+}
+
 export async function downloadClientFilePdf(file: ClientFileData) {
     // Loaded on demand to keep them out of the page bundle. Named export first, default as fallback.
     const jspdfModule = await import("jspdf");
     const jsPDF = jspdfModule.jsPDF ?? jspdfModule.default;
     const autotableModule = await import("jspdf-autotable");
     const autoTable = autotableModule.autoTable ?? autotableModule.default;
-    const logo = await loadLogo();
+    const measurementPhotos = file.measurement?.photos || [];
+    const [logo, photos] = await Promise.all([loadLogo(), Promise.all(measurementPhotos.map((p) => loadPhoto(p.url, p.label)))]);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const job = buildJobSummary(file.measurement?.data);
     const name = (id?: string | null) => (id && file.productNames[id]) || "";
@@ -125,17 +158,15 @@ export async function downloadClientFilePdf(file: ClientFileData) {
 
     // Job at a glance (no prices: this file goes to the workshop and site)
     const mainTracks = job.tracks.filter((t) => t.layer === "Main").length;
-    const totalTrackIn = job.tracks.reduce((s, t) => s + t.finalSize, 0);
     y = heading("Job at a glance", y + 4);
     table({
         startY: y,
-        head: [["Windows", "Curtain panels", "Blinds", "Tracks", "Total track length"]],
+        head: [["Windows", "Curtain panels", "Blinds", "Tracks"]],
         body: [[
             String(job.windows.length),
             String(job.curtains.reduce((s, c) => s + c.quantity, 0)),
             String(job.blinds.length),
             `${job.tracks.length} (${mainTracks} main, ${job.tracks.length - mainTracks} sheer)`,
-            job.tracks.length ? formatFeetInches(totalTrackIn) : "-",
         ]],
         styles: { font: "helvetica", fontSize: 9, halign: "center", cellPadding: 2, textColor: DARK, lineColor: [210, 214, 220], lineWidth: 0.15 },
     });
@@ -208,9 +239,9 @@ export async function downloadClientFilePdf(file: ClientFileData) {
         y += 4;
         table({
             startY: y,
-            head: [["Track product", "Tracks", "Total length"]],
-            body: trackTotalsByProduct(job.tracks, file.productNames).map((t) => [t.name, String(t.count), `${inches(t.totalInches)}  (${formatFeetInches(t.totalInches)})`]),
-            columnStyles: { 1: { halign: "center", cellWidth: 20 }, 2: { halign: "right", cellWidth: 55 } },
+            head: [["Track product", "Tracks"]],
+            body: trackTotalsByProduct(job.tracks, file.productNames).map((t) => [t.name, String(t.count)]),
+            columnStyles: { 1: { halign: "center", cellWidth: 20 } },
         });
         y = lastY() + 5;
         table({
@@ -283,10 +314,9 @@ export async function downloadClientFilePdf(file: ClientFileData) {
         y = heading("Vendors", y + 4);
         y = note(vendorLines.join("     "), y + 1, 9.5);
     }
-    if (file.measurement && (file.measurement.referenceFiles.length || file.measurement.photoCount)) {
-        y = heading("Reference files & photos", y + 4);
+    if (file.measurement?.referenceFiles.length) {
+        y = heading("Reference files", y + 4);
         for (const f of file.measurement.referenceFiles) y = note(`${f.name}: ${f.url}`, y, 8);
-        if (file.measurement.photoCount) y = note(`${file.measurement.photoCount} measurement photo(s) saved in the app.`, y, 8);
     }
 
     // Sign-off
@@ -297,6 +327,39 @@ export async function downloadClientFilePdf(file: ClientFileData) {
     doc.text("Measured by: ______________________", M, y + 8);
     doc.text("Checked by: ______________________", PAGE_W / 2 + 5, y + 8);
     doc.text("Installed on: ______________________", M, y + 18);
+
+    // ── 8. Measurement photos (two per row, caption above each) ─────────
+    if (measurementPhotos.length) {
+        y = newPage("Measurement photos");
+        const loaded = photos.filter((p): p is NonNullable<Photo> => p !== null);
+        const failed = measurementPhotos.length - loaded.length;
+        y = note(
+            `${loaded.length} photo(s) from the measurement sheet.` + (failed ? ` ${failed} could not be added (missing or unsupported format) - see them in the app.` : ""),
+            y,
+            8.5,
+        );
+        const GAP = 6, COL_W = (PAGE_W - 2 * M - GAP) / 2, MAX_H = 95, CAPTION = 5, BOTTOM = PAGE_H - 18;
+        for (let i = 0; i < loaded.length; i += 2) {
+            const row = loaded.slice(i, i + 2).map((p) => {
+                const ratio = Math.min(COL_W / p.w, MAX_H / p.h);
+                return { ...p, dw: p.w * ratio, dh: p.h * ratio };
+            });
+            const rowH = CAPTION + Math.max(...row.map((p) => p.dh));
+            if (y + rowH > BOTTOM) {
+                doc.addPage();
+                y = 22;
+            }
+            row.forEach((p, col) => {
+                const x = M + col * (COL_W + GAP);
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8);
+                doc.setTextColor(...DARK);
+                doc.text(doc.splitTextToSize(safe(p.label), COL_W)[0], x, y + 3);
+                doc.addImage(p.data, "JPEG", x + (COL_W - p.dw) / 2, y + CAPTION, p.dw, p.dh);
+            });
+            y += rowH + 6;
+        }
+    }
 
     // Footer on every page
     const pages = doc.getNumberOfPages();

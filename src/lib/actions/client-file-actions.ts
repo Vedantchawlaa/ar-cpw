@@ -43,7 +43,8 @@ export interface ClientFileData {
         data: unknown;
         notes: string | null;
         referenceFiles: { name: string; url: string }[];
-        photoCount: number;
+        /** Measurement photos: each window's photos first (in sheet order), then general ones. */
+        photos: { label: string; url: string }[];
         updatedAt: string;
     } | null;
     productNames: Record<string, string>;
@@ -98,6 +99,27 @@ export async function getClientFileList(): Promise<ClientFileListRow[]> {
         console.error("Failed to list client files:", error);
         return [];
     }
+}
+
+/** Photos attached to windows in the measurement sheet, then the sheet's general photos. */
+function measurementPhotos(data: any, general: string[]): { label: string; url: string }[] {
+    const photos: { label: string; url: string }[] = [];
+    const seen = new Set<string>();
+    const add = (label: string, url: unknown) => {
+        if (typeof url !== "string" || !url || seen.has(url)) return;
+        seen.add(url);
+        photos.push({ label, url });
+    };
+    for (const floor of data?.floors || []) {
+        for (const room of floor.rooms || []) {
+            for (const item of room.items || []) {
+                const label = [floor.name, room.name, item.name].map((s) => String(s || "").trim()).filter(Boolean).join(" > ");
+                for (const url of item.images || []) add(label || "Window", url);
+            }
+        }
+    }
+    for (const url of general || []) add("General", url);
+    return photos;
 }
 
 export async function getClientFileData(leadId: string): Promise<{ ok: true; data: ClientFileData } | { ok: false; error: string }> {
@@ -170,7 +192,7 @@ export async function getClientFileData(leadId: string): Promise<{ ok: true; dat
                         data: mData,
                         notes: measurement.notes,
                         referenceFiles: Array.isArray(measurement.referenceFiles) ? (measurement.referenceFiles as { name: string; url: string }[]) : [],
-                        photoCount: measurement.images.length,
+                        photos: measurementPhotos(mData, measurement.images),
                         updatedAt: measurement.updatedAt.toISOString(),
                     }
                     : null,

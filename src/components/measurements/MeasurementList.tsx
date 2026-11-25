@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { deleteMeasurement, generateQuotationFromMeasurement } from "@/lib/actions/measurement-actions";
 import { getProducts } from "@/lib/actions/product-actions";
 import { formatDate } from "@/lib/utils";
+import { DownloadClientFileButton } from "@/components/leads/ClientFileButton";
 import { useRouter } from "next/navigation";
 
 export function MeasurementList({ measurements }: { measurements: any[] }) {
@@ -563,6 +564,7 @@ export function MeasurementList({ measurements }: { measurements: any[] }) {
                                             >
                                                 <FileDown className="h-4 w-4 text-slate-600" />
                                             </button>
+                                            {m.leadId && <DownloadClientFileButton leadId={m.leadId} look="icon" className="h-8 px-1.5" />}
                                             <button
                                                 onClick={(e) => handleGenerateQuotation(m.id, m.title || "Untitled Measurement", e)}
                                                 className="p-1.5 hover:bg-blue-100 rounded-md transition-colors"

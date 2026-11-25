@@ -2,6 +2,7 @@ import { getQuotation } from "@/lib/actions/quotation-actions";
 import { getLeads } from "@/lib/actions/lead-actions";
 import QuotationBuilder from "@/components/quotations/QuotationBuilder";
 import { notFound } from "next/navigation";
+import { DownloadClientFileButton } from "@/components/leads/ClientFileButton";
 import { QuotationWithRelations } from "@/lib/actions/quotation-actions";
 
 interface PageProps {
@@ -25,8 +26,9 @@ export default async function EditQuotationPage({ params }: PageProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Edit Estimate #{quotation.number}</h1>
+                <DownloadClientFileButton leadId={quotation.leadId} variant="outline" />
             </div>
 
             <QuotationBuilder leads={leads} initialData={quotation} />

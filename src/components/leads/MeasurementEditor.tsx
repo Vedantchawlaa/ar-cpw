@@ -11,6 +11,36 @@ import { getProducts } from "@/lib/actions/product-actions";
 import { getLeads } from "@/lib/actions/lead-actions";
 import { useRouter } from "next/navigation";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog";
+import { mergeProductIntoPicker, quickAddProduct } from "@/lib/actions/stock-actions";
+import { listedInPicker, looseProductName, type PickerKind } from "@/lib/stock-units";
+
+type ProductKind = PickerKind;
+
+/** Adds the product to a list, or replaces the copy already there; keeps A-Z order. */
+function upsertProduct<T extends { id: string; name: string }>(list: T[], product: T) {
+    return [...list.filter((p) => p.id !== product.id), { ...list.find((p) => p.id === product.id), ...product }].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Same name (ignoring case/spaces/dashes), and other products whose name overlaps what was typed. */
+function findExisting(catalogue: any[], name: string) {
+    const key = looseProductName(name);
+    if (key.length < 2) return { match: null, similar: [] as any[] };
+    const match = catalogue.find((p) => looseProductName(p.name) === key) ?? null;
+    const similar = catalogue
+        .filter((p) => p !== match && (looseProductName(p.name).includes(key) || (looseProductName(p.name).length >= 3 && key.includes(looseProductName(p.name)))))
+        .slice(0, 4);
+    return { match, similar };
+}
+const KIND_LABEL: Record<ProductKind, string> = { TRACK: "track", FABRIC: "fabric", BLIND: "blind" };
+/** The window field the new product is picked into once it is saved. */
+type AddProductTarget = {
+    kind: ProductKind;
+    floorId: string;
+    roomId: string;
+    itemId: string;
+    field: "trackProduct" | "sheerTrackProduct" | "fabricProduct" | "sheerFabricProduct" | "blindProduct";
+};
 
 interface MeasurementItem {
     id: string;
@@ -88,6 +118,8 @@ export function MeasurementEditor({
     const [trackProducts, setTrackProducts] = useState<any[]>([]);
     const [fabricProducts, setFabricProducts] = useState<any[]>([]);
     const [blindProducts, setBlindProducts] = useState<any[]>([]);
+    const [addProduct, setAddProduct] = useState<(AddProductTarget & { name: string; rate: string; saving: boolean; error: string }) | null>(null);
+    const [catalogue, setCatalogue] = useState<any[]>([]); // every product, to spot duplicates when adding
     const [leads, setLeads] = useState<any[]>([]);
     const [selectedLeadId, setSelectedLeadId] = useState<string>(leadId || "");
     const [showNewLeadForm, setShowNewLeadForm] = useState(false);
@@ -241,16 +273,11 @@ export function MeasurementEditor({
         getProducts().then(result => {
             if (result.success && result.data) {
                 const allProducts = result.data;
+                setCatalogue(allProducts);
                 // Filter products by type
-                setTrackProducts(allProducts.filter((p: any) =>
-                    p.name.toLowerCase().includes('track')
-                ));
-                setFabricProducts(allProducts.filter((p: any) =>
-                    p.name.toLowerCase().includes('fabric') || p.category?.toLowerCase() === 'fabric'
-                ));
-                setBlindProducts(allProducts.filter((p: any) =>
-                    p.name.toLowerCase().includes('blind') || p.category?.toLowerCase() === 'blind'
-                ));
+                setTrackProducts(allProducts.filter((p: any) => listedInPicker("TRACK", p)));
+                setFabricProducts(allProducts.filter((p: any) => listedInPicker("FABRIC", p)));
+                setBlindProducts(allProducts.filter((p: any) => listedInPicker("BLIND", p)));
             }
         });
 
@@ -493,6 +520,45 @@ export function MeasurementEditor({
             }
             return f;
         }));
+    };
+
+    const openAddProduct = (target: AddProductTarget) => (query: string) =>
+        setAddProduct({ ...target, name: query, rate: "", saving: false, error: "" });
+
+    const saveNewProduct = async () => {
+        if (!addProduct) return;
+        const name = addProduct.name.trim();
+        const rate = parseFloat(addProduct.rate);
+        if (!name) return setAddProduct({ ...addProduct, error: "Enter a product name." });
+        if (addProduct.rate.trim() && !(rate >= 0)) return setAddProduct({ ...addProduct, error: "Rate must be zero or more." });
+        setAddProduct({ ...addProduct, saving: true, error: "" });
+        const res = await quickAddProduct({ name, rate: Number.isFinite(rate) ? rate : 0, kind: addProduct.kind });
+        if (!res.success) {
+            // Someone added the same name meanwhile: put it in the list so the merge options show
+            if ("duplicate" in res && res.duplicate) setCatalogue((list) => upsertProduct(list, res.duplicate));
+            return setAddProduct({ ...addProduct, saving: false, error: res.error });
+        }
+        pickProduct(addProduct, res.product);
+    };
+
+    /** Use an existing product instead of adding a duplicate; optionally sync its rate. */
+    const mergeExisting = async (existing: { id: string }, syncRate: boolean) => {
+        if (!addProduct) return;
+        const rate = parseFloat(addProduct.rate);
+        setAddProduct({ ...addProduct, saving: true, error: "" });
+        const res = await mergeProductIntoPicker({ id: existing.id, kind: addProduct.kind, rate: syncRate && Number.isFinite(rate) ? rate : null });
+        if (!res.success) return setAddProduct({ ...addProduct, saving: false, error: res.error });
+        pickProduct(addProduct, res.product);
+    };
+
+    /** Show the product in every picker of its kind straight away (new rate too), then pick it on this window. */
+    const pickProduct = (target: AddProductTarget, product: { id: string; name: string; rate: number; category?: string | null }) => {
+        setCatalogue((list) => upsertProduct(list, product));
+        if (target.kind === "TRACK") setTrackProducts((list) => upsertProduct(list, product));
+        else if (target.kind === "FABRIC") setFabricProducts((list) => upsertProduct(list, product));
+        else setBlindProducts((list) => upsertProduct(list, product));
+        updateItem(target.floorId, target.roomId, target.itemId, target.field, product.id);
+        setAddProduct(null);
     };
 
     const updateItem = (floorId: string, roomId: string, itemId: string, field: keyof MeasurementItem, value: any) => {
@@ -1020,6 +1086,8 @@ export function MeasurementEditor({
                                                                 value={item.trackProduct || ""}
                                                                 onChange={(value) => updateItem(floor.id, room.id, item.id, 'trackProduct', value)}
                                                                 placeholder="Select track..."
+                                                                onCreate={openAddProduct({ kind: "TRACK", floorId: floor.id, roomId: room.id, itemId: item.id, field: "trackProduct" })}
+                                                                createLabel="Add track product"
                                                                 className="h-8"
                                                                 renderOption={(opt) => (
                                                                     <div className="flex justify-between items-center w-full">
@@ -1057,6 +1125,8 @@ export function MeasurementEditor({
                                                             value={item.fabricProduct || ""}
                                                             onChange={(value) => updateItem(floor.id, room.id, item.id, 'fabricProduct', value)}
                                                             placeholder="Select fabric..."
+                                                            onCreate={openAddProduct({ kind: "FABRIC", floorId: floor.id, roomId: room.id, itemId: item.id, field: "fabricProduct" })}
+                                                            createLabel="Add fabric"
                                                             className="h-8"
                                                             renderOption={(opt) => (
                                                                 <div className="flex justify-between items-center w-full">
@@ -1098,6 +1168,8 @@ export function MeasurementEditor({
                                                                 value={item.sheerFabricProduct || ""}
                                                                 onChange={(value) => updateItem(floor.id, room.id, item.id, 'sheerFabricProduct', value)}
                                                                 placeholder="Select sheer fabric..."
+                                                                onCreate={openAddProduct({ kind: "FABRIC", floorId: floor.id, roomId: room.id, itemId: item.id, field: "sheerFabricProduct" })}
+                                                                createLabel="Add fabric"
                                                                 className="h-8"
                                                                 renderOption={(opt) => (
                                                                     <div className="flex justify-between items-center w-full">
@@ -1158,6 +1230,8 @@ export function MeasurementEditor({
                                                                         value={item.sheerTrackProduct || ""}
                                                                         onChange={(value) => updateItem(floor.id, room.id, item.id, 'sheerTrackProduct', value)}
                                                                         placeholder="Select sheer track..."
+                                                                        onCreate={openAddProduct({ kind: "TRACK", floorId: floor.id, roomId: room.id, itemId: item.id, field: "sheerTrackProduct" })}
+                                                                        createLabel="Add track product"
                                                                         className="h-8"
                                                                         renderOption={(opt) => (
                                                                             <div className="flex justify-between items-center w-full">
@@ -1199,6 +1273,8 @@ export function MeasurementEditor({
                                                             value={item.blindProduct || ""}
                                                             onChange={(value) => updateItem(floor.id, room.id, item.id, 'blindProduct', value)}
                                                             placeholder="Select blind..."
+                                                            onCreate={openAddProduct({ kind: "BLIND", floorId: floor.id, roomId: room.id, itemId: item.id, field: "blindProduct" })}
+                                                            createLabel="Add blind product"
                                                             className="h-8"
                                                             renderOption={(opt) => (
                                                                 <div className="flex justify-between items-center w-full">
@@ -1332,6 +1408,93 @@ export function MeasurementEditor({
 
             {/* Spacer for sticky bar */}
             <div className="h-20 sm:hidden" />
+
+            <Dialog open={!!addProduct} onOpenChange={(open) => { if (!open && !addProduct?.saving) setAddProduct(null); }}>
+                {addProduct && (() => {
+                    const { match, similar } = findExisting(catalogue, addProduct.name);
+                    const typedRate = parseFloat(addProduct.rate);
+                    const rateDiffers = !!match && addProduct.rate.trim() !== "" && Number.isFinite(typedRate) && typedRate !== match.rate;
+                    const rateUnit = addProduct.kind === "TRACK" ? "ft" : addProduct.kind === "FABRIC" ? "metre" : "sq ft";
+                    const describe = (p: any) => `₹${p.rate}${p.category ? ` · ${p.category}` : ""}${listedInPicker(addProduct.kind, p) ? "" : ` · not in ${KIND_LABEL[addProduct.kind]} list yet`}`;
+                    return (
+                    <form
+                        onSubmit={(e) => { e.preventDefault(); saveNewProduct(); }}
+                        className="contents"
+                    >
+                        <DialogHeader>
+                            <DialogTitle>Add {KIND_LABEL[addProduct.kind]} product</DialogTitle>
+                            <DialogDescription>Saved to the product list and selected on this window.</DialogDescription>
+                        </DialogHeader>
+                        <DialogContent>
+                            <div className="space-y-1">
+                                <label className="text-xs font-medium text-slate-600">Name</label>
+                                <Input
+                                    autoFocus
+                                    value={addProduct.name}
+                                    onChange={(e) => setAddProduct({ ...addProduct, name: e.target.value, error: "" })}
+                                    placeholder={addProduct.kind === "TRACK" ? "e.g. Jumbo Track" : addProduct.kind === "FABRIC" ? "e.g. Blush fabric" : "e.g. Zebra blind"}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-medium text-slate-600">
+                                    Rate (₹ per {rateUnit})
+                                </label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={addProduct.rate}
+                                    onChange={(e) => setAddProduct({ ...addProduct, rate: e.target.value, error: "" })}
+                                    placeholder="0"
+                                />
+                            </div>
+                            {match && (
+                                <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm">
+                                    <p className="font-medium text-amber-900">Already in the product list</p>
+                                    <p className="text-amber-800"><span className="font-semibold">{match.name}</span> · {describe(match)}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button type="button" size="sm" onClick={() => mergeExisting(match, false)} disabled={addProduct.saving}>
+                                            Use existing
+                                        </Button>
+                                        {rateDiffers && (
+                                            <Button type="button" size="sm" variant="outline" onClick={() => mergeExisting(match, true)} disabled={addProduct.saving}>
+                                                Use & update rate ₹{match.rate} → ₹{typedRate}
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-amber-700">Nothing is duplicated. Stock and other details stay as they are.</p>
+                                </div>
+                            )}
+                            {similar.length > 0 && (
+                                <div className="space-y-1 text-sm">
+                                    <p className="text-xs font-medium text-slate-500">Similar products already in the list</p>
+                                    <div className="divide-y rounded-md border">
+                                        {similar.map((p: any) => (
+                                            <div key={p.id} className="flex items-center gap-2 px-3 py-1.5">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate font-medium">{p.name}</p>
+                                                    <p className="truncate text-xs text-slate-500">{describe(p)}</p>
+                                                </div>
+                                                <Button type="button" size="sm" variant="ghost" className="h-7 text-blue-600" onClick={() => mergeExisting(p, false)} disabled={addProduct.saving}>
+                                                    Use
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {addProduct.error && !match && <p className="text-sm text-red-600">{addProduct.error}</p>}
+                        </DialogContent>
+                        <DialogFooter className="gap-2">
+                            <Button type="button" variant="outline" onClick={() => setAddProduct(null)} disabled={addProduct.saving}>Cancel</Button>
+                            <Button type="submit" disabled={addProduct.saving || !!match} title={match ? "This name is already in the product list" : undefined}>
+                                {addProduct.saving ? "Saving..." : "Add & select"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                    );
+                })()}
+            </Dialog>
         </div>
 
     );
